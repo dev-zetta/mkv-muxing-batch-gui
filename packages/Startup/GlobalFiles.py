@@ -60,7 +60,11 @@ def delete_old_media_files():
 
 
 script_path = sys.argv[0]  # get path of the this file
-script_folder = os.path.dirname(script_path)
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    # PyInstaller keeps bundled data under its private runtime directory.
+    script_folder = sys._MEIPASS
+else:
+    script_folder = os.path.dirname(script_path)
 resources_folder = os.path.join(os.path.abspath(script_folder), Path('Resources'))
 FontFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Fonts'))
 IconFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Icons'))

@@ -2,7 +2,7 @@
 
 A robust application for muxing(merging) videos with subtitles, audios, chapters, attachments alongside many customization options.
 
-[![Github All Releases](https://img.shields.io/github/downloads/yaser01/mkv-muxing-batch-gui/total.svg?color=4DC71F&label=Downloads&logo=github")](https://github.com/yaser01/mkv-muxing-batch-gui/releases/latest)
+[![Github All Releases](https://img.shields.io/github/downloads/orphick/mkv-muxing-batch/total.svg?color=4DC71F&label=Downloads&logo=github)](https://github.com/orphick/mkv-muxing-batch/releases/latest)
 [![Donate](https://img.shields.io/badge/Donate-Buy_Me_A_Coffe-blueviolet.svg)](https://www.buymeacoffee.com/yaser01)
 
 - [App Preview](#app-preview)
@@ -109,8 +109,8 @@ https://github.com/yaser01/mkv-muxing-batch-gui/assets/52576632/33f8bf3e-600c-4e
 
 ## ⬇Downloads
 
-The MKV Muxing Batch GUI is compatible with Windows 7/8/8.1/10/11 32-bit/64-bit and most Linux distributions. 
-You can download it from the project's [releases&nbsp;page](https://github.com/yaser01/mkv-muxing-batch-gui/releases).
+The current fork release supports Windows 10/11 on x64 systems. The source remains available for other platforms, but those builds are not included in this release.
+You can download it from the fork's [releases&nbsp;page](https://github.com/orphick/mkv-muxing-batch/releases).
 
 
 ### For Linux Users
@@ -123,8 +123,8 @@ sudo apt install libxcb-cursor0
 ```
 ### Using Python Code Version
 
-1. Clone the repository :`git clone https://github.com/yaser01/mkv-muxing-batch-gui.git`.
-2. The main branch use ``PySide6`` library on version `6.6.1` which is tested on `python 3.10.8` working good and only supporting x64 systems.
+1. Clone the repository: `git clone https://github.com/orphick/mkv-muxing-batch.git`.
+2. The current Windows release uses `PySide6 6.11.2` and was built and tested with `Python 3.14` on an x64 system.
 3. If you want to use on x32 systems you should switch to branch `develop-PySide2`: `git checkout develop-pyside2` which uses `PySide2 v5.14.0` and tested in `python 3.8.10`.
 4. After selecting the branch just make sure to use the mentioned python version as it's guaranteed to work perfect.
 5. Just run `pip install -r requirements.txt`.
@@ -132,6 +132,17 @@ sudo apt install libxcb-cursor0
 7. You may use `python3/pip3` instead of `python/pip` depending on your system.
 8. For linux users if you want to use another python version from the one that is already on your system it's recommended to use `pyenv`,if you didn't hear about it, you may read [this](https://askubuntu.com/a/1195153).
 9. Also, for linux users: as this app depends on mkvtoolnix it's very recommended to install it on your system before run the app from [here](https://mkvtoolnix.download/downloads.html).
+
+### Building the Windows release
+
+Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), then run:
+
+```powershell
+pip install -r requirements-build.txt
+.\packaging\windows\build_release.ps1
+```
+
+The installer, portable ZIP, and SHA-256 checksums are written to the `release` folder.
 
 ### Updating The MKVmerge version
 You can manually update the mkvmerge version the app uses, but do this only if you're sure of what you're doing, as it may require a reinstallation:
@@ -148,7 +159,7 @@ You can manually update the mkvmerge version the app uses, but do this only if y
 - Thanks to my friends who helped test the app and offered numerous ideas.
 
 ## 🦟Report a Bug
-Any software bugs can be reported on the project's [issues page](https://github.com/yaser01/mkv-muxing-batch-gui/issues). Suggestions for future updates are also welcome.
+Any software bugs can be reported on the fork's [issues page](https://github.com/orphick/mkv-muxing-batch/issues). Suggestions for future updates are also welcome.
 
 ## 🏷License
 

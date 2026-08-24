@@ -27,6 +27,7 @@ class StartMuxingProcessWorker(QObject):
                     self.wait = True
                 else:
                     QThread.msleep(50)
-            self.all_finished.emit()
-        except Exception as e:
+        except Exception:
             write_to_log_file(traceback.format_exc())
+        finally:
+            self.all_finished.emit()

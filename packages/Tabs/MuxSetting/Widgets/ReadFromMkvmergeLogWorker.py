@@ -8,9 +8,9 @@ from packages.Tabs.GlobalSetting import write_to_log_file
 from packages.Tabs.MuxSetting.Widgets.MuxingParams import MuxingParams
 
 
-def next_line(file):
+def next_line(file, should_stop=lambda: False):
     file.seek(0, 2)  # go to the end of file
-    while True:
+    while not should_stop():
         line = file.readline()
         if not line:
             time.sleep(0.05)
@@ -42,7 +42,7 @@ class ReadFromMkvmergeLogWorker(QObject):
                     muxing_params.index = self.job_index
                     muxing_params.progress = 0
                     with open(GlobalFiles.MuxingLogFilePath, "a+", encoding="UTF-8") as log_file:
-                        for line in next_line(log_file):
+                        for line in next_line(log_file, lambda: self.stop):
                             if line.find('Progress:') != -1:
                                 new_progress = get_int_from_string(line)
                                 muxing_params.progress = new_progress
@@ -60,11 +60,14 @@ class ReadFromMkvmergeLogWorker(QObject):
                                 muxing_params.message = line
                                 self.send_muxing_progress_data_signal.emit(muxing_params)
                                 break
+                    if self.stop:
+                        break
                     self.finished_job_signal.emit(muxing_params)
                     self.wait = True
 
                 else:
                     QThread.msleep(50)
-            self.all_finished.emit()
-        except Exception as e:
+        except Exception:
             write_to_log_file(traceback.format_exc())
+        finally:
+            self.all_finished.emit()

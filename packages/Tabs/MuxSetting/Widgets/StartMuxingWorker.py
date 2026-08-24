@@ -79,6 +79,7 @@ class StartMuxingWorker(QObject):
         self.use_mkvmerge = False
         self.pause = False
         self.cancel = False
+        self._threads_stopped = False
         self.setup_start_muxing_process_thread()
         self.setup_read_mkvmerge_log_thread()
         self.setup_read_mkvpropedit_log_thread()
@@ -90,58 +91,83 @@ class StartMuxingWorker(QObject):
 
     def run(self):
         try:
-            if self.current_job == len(self.data):
-                self.stop_all_threads()
-                self.finished_all_jobs_signal.emit()
             self.next_job()
-        except Exception as e:
+        except Exception:
             write_to_log_file(traceback.format_exc())
+            self.stop_all_threads()
+            self.cancel_signal.emit()
 
     def stop_all_threads(self):
+        if self._threads_stopped:
+            return
+
+        self._threads_stopped = True
         self.read_log_mkvmerge_worker.stop = True
         self.read_log_mkvpropedit_worker.stop = True
         self.start_muxing_process_worker.stop = True
         self.start_crc_calculating_process_worker.stop = True
+
+        # Stop flags are asynchronous. Deleting this controller before its
+        # helpers have exited can make Qt abort with
+        # "QThread: Destroyed while thread is still running".
+        helper_threads = (
+            self.read_log_mkvmerge_thread,
+            self.read_log_mkvpropedit_thread,
+            self.start_muxing_process_thread,
+            self.start_crc_calculating_process_thread,
+        )
+        for thread in helper_threads:
+            if thread.isRunning():
+                thread.wait()
+        for thread in helper_threads:
+            thread.deleteLater()
 
     def next_job(self):
         if self.cancel:
             self.stop_all_threads()
             self.cancel_signal.emit()
             return
-        self.current_job += 1
-        if self.current_job == len(self.data):
-            self.stop_all_threads()
-            self.finished_all_jobs_signal.emit()
-            return
-        if self.pause:
-            self.stop_all_threads()
-            self.finished_paused_signal.emit()
-            return
 
-        job = self.data[self.current_job]
-        if not job.done or (job.error_occurred and job.muxing_message.find("There is not enough space") != -1):
-            GetJsonForMkvmergeJob(job)
-            if GlobalSetting.VIDEO_SOURCE_MKV_ONLY:
-                GetJsonForMkvpropeditJob(job)
-            else:
-                self.always_use_mkvmerge = True
-            if self.always_use_mkvpropedit:
-                self.job_started_signal.emit(self.current_job)
-                self.start_mkvpropedit_muxing()
-            elif self.always_use_mkvmerge:
-                self.job_started_signal.emit(self.current_job)
-                self.start_mkvmerge_muxing()
-            else:
-                if GlobalSetting.USE_MKVPROPEDIT:
-                    self.always_use_mkvpropedit = True
-                    self.job_started_signal.emit(self.current_job)
-                    self.start_mkvpropedit_muxing()
-                else:
-                    self.always_use_mkvmerge = True
-                    self.job_started_signal.emit(self.current_job)
-                    self.start_mkvmerge_muxing()
+        # Resuming can leave a large prefix of completed jobs. Scan it without
+        # recursion so queue size cannot exhaust Python's call stack.
+        while True:
+            self.current_job += 1
+            if self.current_job == len(self.data):
+                self.stop_all_threads()
+                self.finished_all_jobs_signal.emit()
+                return
+            if self.pause:
+                self.stop_all_threads()
+                self.finished_paused_signal.emit()
+                return
+
+            job = self.data[self.current_job]
+            retry_after_no_space = (
+                job.error_occurred
+                and "There is not enough space" in job.muxing_message
+            )
+            if not job.done or retry_after_no_space:
+                break
+
+        GetJsonForMkvmergeJob(job)
+        if GlobalSetting.VIDEO_SOURCE_MKV_ONLY:
+            GetJsonForMkvpropeditJob(job)
         else:
-            self.next_job()
+            self.always_use_mkvmerge = True
+        if self.always_use_mkvpropedit:
+            self.job_started_signal.emit(self.current_job)
+            self.start_mkvpropedit_muxing()
+        elif self.always_use_mkvmerge:
+            self.job_started_signal.emit(self.current_job)
+            self.start_mkvmerge_muxing()
+        elif GlobalSetting.USE_MKVPROPEDIT:
+            self.always_use_mkvpropedit = True
+            self.job_started_signal.emit(self.current_job)
+            self.start_mkvpropedit_muxing()
+        else:
+            self.always_use_mkvmerge = True
+            self.job_started_signal.emit(self.current_job)
+            self.start_mkvmerge_muxing()
 
     # noinspection PyAttributeOutsideInit
     def start_mkvpropedit_muxing(self):
@@ -199,8 +225,6 @@ class StartMuxingWorker(QObject):
         self.start_crc_calculating_process_worker.all_finished.connect(self.start_crc_calculating_process_thread.quit)
         self.start_crc_calculating_process_worker.all_finished.connect(
             self.start_crc_calculating_process_worker.deleteLater)
-        self.start_crc_calculating_process_thread.finished.connect(
-            self.start_crc_calculating_process_thread.deleteLater)
         self.start_crc_calculating_process_worker.crc_progress_signal.connect(self.receive_crc_progress)
         self.start_crc_calculating_process_worker.crc_result_signal.connect(self.receive_crc_result)
 
@@ -213,7 +237,6 @@ class StartMuxingWorker(QObject):
         self.read_log_mkvmerge_worker.all_finished.connect(self.read_log_mkvmerge_thread.quit)
         self.read_log_mkvmerge_worker.all_finished.connect(self.read_log_mkvmerge_worker.deleteLater)
         self.read_log_mkvmerge_worker.finished_job_signal.connect(self.finished_read_log)
-        self.read_log_mkvmerge_thread.finished.connect(self.read_log_mkvmerge_thread.deleteLater)
         self.read_log_mkvmerge_worker.send_muxing_progress_data_signal.connect(self.receive_muxing_progress_data)
 
     # noinspection PyAttributeOutsideInit
@@ -225,7 +248,6 @@ class StartMuxingWorker(QObject):
         self.read_log_mkvpropedit_worker.all_finished.connect(self.read_log_mkvpropedit_thread.quit)
         self.read_log_mkvpropedit_worker.all_finished.connect(self.read_log_mkvpropedit_worker.deleteLater)
         self.read_log_mkvpropedit_worker.finished_job_signal.connect(self.finished_read_log)
-        self.read_log_mkvpropedit_thread.finished.connect(self.read_log_mkvpropedit_thread.deleteLater)
         self.read_log_mkvpropedit_worker.send_muxing_progress_data_signal.connect(self.receive_muxing_progress_data)
 
     def receive_muxing_progress_data(self, params: MuxingParams):

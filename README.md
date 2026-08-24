@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="Resources/Icons/AppLogo.png" alt="MKV Muxing Batch logo" width="112">
+
 # MKV Muxing Batch
 
 **Build the batch. Trust the queue. Walk away.**
@@ -89,9 +91,6 @@ The packaged release supports **64-bit Windows 10 and Windows 11**.
 [**Download the latest release →**](https://github.com/orphick/mkv-muxing-batch/releases/latest)
 
 Choose the installer for a normal Windows installation or the portable ZIP when you want a self-contained copy. Each release includes a `SHA256SUMS.txt` file for integrity verification.
-
-> [!NOTE]
-> The interface shown above reflects the current `main` branch. Packaged releases are versioned snapshots and may temporarily trail the newest interface work.
 
 ## Supported files
 

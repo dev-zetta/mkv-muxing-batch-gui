@@ -1,172 +1,192 @@
-# MKV Muxing Batch GUI
+<div align="center">
 
-A robust application for muxing(merging) videos with subtitles, audios, chapters, attachments alongside many customization options.
+# MKV Muxing Batch
 
-[![Github All Releases](https://img.shields.io/github/downloads/orphick/mkv-muxing-batch/total.svg?color=4DC71F&label=Downloads&logo=github)](https://github.com/orphick/mkv-muxing-batch/releases/latest)
-[![Donate](https://img.shields.io/badge/Donate-Buy_Me_A_Coffe-blueviolet.svg)](https://www.buymeacoffee.com/yaser01)
+**Build the batch. Trust the queue. Walk away.**
 
-- [App Preview](#app-preview)
-- [Features](#features)
-    - [Video Options](#video-options)
-    - [Subtitle Options](#subtitle-options)
-    - [Audio Options](#audio-options)
-    - [Chapter Options](#chapter-options)
-    - [Attachment Options](#attachment-options)
-    - [Source Files Options](#source-files-options)
-    - [Muxing Options](#muxing-options)
-- [Notes](#notes)
-- [Supported Extensions](#supported-extensions)
-- [Downloads](#downloads)
-    - [For Linux Users](#for-linux-users)
-    - [Using Python Code](#using-python-code-version)
-    - [Updating the MKVmerge version](#updating-the-mkvmerge-version)
-- [Attribution](#attribution)
-- [Report a Bug](#report-a-bug)
+A focused desktop workspace for muxing entire video collections with precise track control.
 
+[![Latest release](https://img.shields.io/github/v/release/orphick/mkv-muxing-batch?display_name=tag&sort=semver&style=flat-square&color=7657b4)](https://github.com/orphick/mkv-muxing-batch/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/orphick/mkv-muxing-batch/total?style=flat-square&color=7657b4)](https://github.com/orphick/mkv-muxing-batch/releases)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2f7dd1?style=flat-square&logo=windows11)](https://github.com/orphick/mkv-muxing-batch/releases/latest)
+[![Python](https://img.shields.io/badge/Python-3.14-3776ab?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/github/license/orphick/mkv-muxing-batch?style=flat-square&color=3ca374)](LICENSE)
 
+[Download](#download) · [See what it can do](#what-it-does) · [Run from source](#run-from-source) · [Report a problem](https://github.com/orphick/mkv-muxing-batch/issues)
 
+</div>
 
-- [License](#license)
+![MKV Muxing Batch dark workspace](docs/images/app-overview.png)
 
-## ✨App Preview
-_A preview of the application in action:_
+> Fifty episodes should feel like one job—not fifty opportunities for something to go wrong.
 
+MKV Muxing Batch turns a folder full of videos, subtitles, audio tracks, chapters, and attachments into one controlled workflow. Match the files, decide exactly how every track should behave, add the batch to the queue, and let the application carry it to completion.
 
-https://github.com/yaser01/mkv-muxing-batch-gui/assets/52576632/33f8bf3e-600c-4e0d-8ee2-ca51abdf79dc
+This maintained fork is built around three promises: **large queues should stay stable, interrupted work should be recoverable, and repetitive metadata work should happen once—not file by file.**
 
+## Why this fork exists
 
+The original project solved a real problem and grew an unusually capable muxing tool. This fork carries that work forward with an active focus on reliability, recovery, and a calmer modern desktop experience.
 
-## 📖Features
+Recent work includes:
 
-### Video Options
-- View media info of each file to monitor the video tracks
-- Change default video duration/FPS [use this feature cautiously]
-### Subtitle Options
-- Add new subtitles to each video file
-- Subtitles names **don't have to match** videos names
-- Reorder the subtitles to match the right video
-- Remove files from the subtitle tab
-- Set subtitles to be default/forced
-- Set subtitle delay, track name, language
-- Mux the new subtitle at any desired position in the output video
-- Add multiple subtitles to each video file with individual settings for each subtitle
+- safer worker and process cleanup for long muxing sessions;
+- persistent queues with crash and restart recovery;
+- batch templates for video titles and audio/subtitle track names;
+- a redesigned dark interface with clear navigation and a queue-first workspace;
+- a tested Windows release pipeline with installer, portable archive, and SHA-256 checksums.
 
-### Audio Options
-- Add new audios to each video file
-- Audios names **don't have to match** videos names
-- Reorder the audios to match the right video
-- Remove files from the audio tab
-- Set audios to be default/forced
-- Set audio delay, track name, language
-- Mux the new audio at any desired position in the output video
-- Add multiple audios to each video file with individual settings for each audio
+## What it does
 
-### Chapter Options
-- Add new chapters to each video file
-- Chapters names **don't have to match** videos names
-- Reorder the chapters to match the right video
-- Remove files from the chapter tab
+### Survives the long jobs
 
-### Attachment Options
-- Add new attachments to all video files
-- Discard old attachments files from all videos
-- Ability to attach file/folder for each video separately [expert mode]
-- Option to prevent adding duplicate existing attachments [any existing attachment in source video will be skipped]
+The queue is saved automatically. If the application or machine stops unexpectedly, unfinished work is restored on the next launch. Completed jobs remain completed, while the interrupted job is safely returned to the queue instead of being mistaken for a success.
 
-### Source Files Options
-- Discard old subtitles
-- Keep subtitles with specific language(s) and/or track id(s) while discarding any other subtitle
-- Discard old audios
-- Keep audios with specific language(s) or track id(s) while discarding any other audio
-- Set an old subtitle track to be default/forced
-- Set an old audio track to be default/forced
-- Modify existing tracks **(each track separately)** like: track name,delete,set default,set forced and language, even you can change their order with shortcuts `Ctrl + Up Arrow / Ctrl + Down Arrow`
-### Muxing Options
-- Override global settings by changing subtitle/audio settings (delay, track name, language) for each subtitle/audio file
-- Batch-edit Matroska video titles and audio/subtitle track names from the **Names...** dialog
-  - Templates support `{old}`, `{filename}`, `{stem}`, `{index}`, and `{language}` placeholders
-  - Blank template fields leave the corresponding metadata unchanged
-- Save a log file
-- Automatically restore unfinished queues after a crash or restart; completed jobs stay completed and the interrupted job restarts safely
-- Set your default directories, languages, and file extensions to be remembered for future runs
-- Optimize your muxing by modifying the source file when feasible. A prompt will appear when this option is available
-## 📝Notes
+### Handles tracks as tracks—not just files
+
+- Add multiple subtitle and audio sets to every video.
+- Configure language, delay, track name, default/forced state, and output position independently.
+- Reorder mismatched filenames manually; subtitle and audio filenames do not need to mirror video filenames.
+- Inspect existing tracks, discard unwanted tracks, or keep only selected languages and track IDs.
+- Modify existing track names, languages, order, default state, and forced state.
+
+### Renames a whole collection in one pass
+
+The **Metadata Names** dialog applies templates across the batch without touching fields you leave blank.
+
+Available placeholders:
+
+```text
+{old}       existing title or track name
+{filename}  source filename including its extension
+{stem}      source filename without its extension
+{index}     one-based position in the batch
+{language}  configured track language
+```
+
+For example, `{stem}` can make every MKV title follow its source filename, while `{language} - {old}` can normalize track names without erasing their original labels.
+
+### Covers the rest of the container
+
+- Add XML chapters per video.
+- Attach fonts, artwork, or other files to every output.
+- Use expert attachment mode to assign different files or folders to individual videos.
+- Skip attachments already present in a source file.
+- Preserve logs, add or remove CRC metadata, and control output destinations.
+- Save favorite directories, languages, extensions, and other defaults as presets.
+
+## The workflow
+
+1. **Choose videos** — load the source collection and inspect its media information.
+2. **Build the container** — match subtitles, audio, chapters, and attachments; configure each track.
+3. **Shape the output** — choose a destination, decide which original tracks survive, and apply metadata templates.
+4. **Trust the queue** — review the jobs, start muxing, and let automatic persistence protect unfinished work.
+
+## Download
+
+The packaged release supports **64-bit Windows 10 and Windows 11**.
+
+[**Download the latest release →**](https://github.com/orphick/mkv-muxing-batch/releases/latest)
+
+Choose the installer for a normal Windows installation or the portable ZIP when you want a self-contained copy. Each release includes a `SHA256SUMS.txt` file for integrity verification.
 
 > [!NOTE]
->1. Leaving destination folder empty will lead to overwrite source videos a popup will shown to confirm this action.
->2. When the option [make this subtitle/audio default] is activated with language/track that does not exist in the source, then the option will be ignored.
->3. When the option [keep this subtitle/audio only] is activated with language/track that does not exist in the source video, then the option will lead to output video with only chosen language/track (even if it means to discard all subtitle/audio from the source).
->4. When using `Modify Old Tracks` in video tab, the following options: (make this subtitle/audio default, keep this subtitle/audio only, mux new subtitle/audio in desired position) will be **disabled/limited**.
->5. When using `mux subtitle/audio` at same position for the same track type, they will be added respecting to the order of all other new subtitles/audio.
->6. In every tab/dialog you can reorder tracks using shortcuts `Ctrl + Up Arrow / Ctrl + Down Arrow` except for: (Attachment/Muxing Tab).
-## 📁Supported Extensions
-|     Type    |                                        Extensions                                       |
-|:-----------:|:---------------------------------------------------------------------------------------:|
-|   Video     | AVI, MKV, MP4, M4V, MOV, MPEG, TS, OGG, OGM, H264, H265, WEBM, WMV                       |
-|  Subtitle   | ASS, SRT, SSA, SUP, PGS, MKS, VTT                                                       |
-|   Audio     | AAC, AC3, FLAC, EAC3, MKA, M4A, MP3, DTS, DTSMA, THD, WAV, OGG, OPUS                      |
-|   Chapter   | XML                                                                                     |
+> The interface shown above reflects the current `main` branch. Packaged releases are versioned snapshots and may temporarily trail the newest interface work.
 
-## ⬇Downloads
+## Supported files
 
-The current fork release supports Windows 10/11 on x64 systems. The source remains available for other platforms, but those builds are not included in this release.
-You can download it from the fork's [releases&nbsp;page](https://github.com/orphick/mkv-muxing-batch/releases).
+- **Video:** AVI, MKV, MP4, M4V, MOV, MPEG, TS, OGG, OGM, H264, H265, WEBM, WMV
+- **Subtitle:** ASS, SRT, SSA, SUP, PGS, MKS, VTT
+- **Audio:** AAC, AC3, FLAC, EAC3, MKA, M4A, MP3, DTS, DTSMA, THD, WAV, OGG, OPUS
+- **Chapter:** XML
 
+The application uses [MKVToolNix](https://mkvtoolnix.download/) for Matroska processing.
 
-### For Linux Users
-The deployed app available in downloads only support glibc 2.35 and above like: Ubuntu 22.04/up , Mint 21.2/up, Fedora 38/up and others [i can't test them all]
-Before starting the app, install the following libraries [not always needed as most of them included in the app]:
-```bash
-sudo apt-get install -y libpugixml-dev
-sudo apt-get install -y libmatroska-dev
-sudo apt install libxcb-cursor0
-```
-### Using Python Code Version
+## Before muxing
 
-1. Clone the repository: `git clone https://github.com/orphick/mkv-muxing-batch.git`.
-2. The current Windows release uses `PySide6 6.11.2` and was built and tested with `Python 3.14` on an x64 system.
-3. If you want to use on x32 systems you should switch to branch `develop-PySide2`: `git checkout develop-pyside2` which uses `PySide2 v5.14.0` and tested in `python 3.8.10`.
-4. After selecting the branch just make sure to use the mentioned python version as it's guaranteed to work perfect.
-5. Just run `pip install -r requirements.txt`.
-6. Then run `python main.py` and you are all good :D.
-7. You may use `python3/pip3` instead of `python/pip` depending on your system.
-8. For linux users if you want to use another python version from the one that is already on your system it's recommended to use `pyenv`,if you didn't hear about it, you may read [this](https://askubuntu.com/a/1195153).
-9. Also, for linux users: as this app depends on mkvtoolnix it's very recommended to install it on your system before run the app from [here](https://mkvtoolnix.download/downloads.html).
+> [!WARNING]
+> Leaving the destination folder empty means the application will replace the source videos after asking for confirmation. Keep a backup when working with irreplaceable files.
 
-### Building the Windows release
+A few advanced combinations deserve extra care:
 
-Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), then run:
+- A requested default language or track that does not exist in the source is ignored.
+- A **keep only** rule targeting a missing language or track can produce an output with no tracks of that type.
+- **Modify Old Tracks** limits overlapping keep/default/reorder controls so conflicting instructions are not applied together.
+- New tracks assigned to the same position are inserted in their configured order.
+- `Ctrl + Up Arrow` and `Ctrl + Down Arrow` reorder tracks in supported track dialogs.
+
+## Run from source
+
+### Windows
+
+The maintained configuration uses Python 3.14 and PySide6 6.11.2.
 
 ```powershell
-pip install -r requirements-build.txt
+git clone https://github.com/orphick/mkv-muxing-batch.git
+cd mkv-muxing-batch
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py
+```
+
+### Linux
+
+Install MKVToolNix and the Qt runtime libraries required by your distribution first. On Ubuntu-based systems, these packages cover the common requirements:
+
+```bash
+sudo apt install mkvtoolnix libpugixml-dev libmatroska-dev libxcb-cursor0
+```
+
+Then create a virtual environment, install the Python dependencies, and start `main.py`:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python main.py
+```
+
+Linux source usage is available, but the maintainers currently publish and verify packaged releases only for 64-bit Windows.
+
+## Development
+
+Run the automated tests with the project environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Build the Windows installer and portable archive after installing [Inno Setup 6](https://jrsoftware.org/isinfo.php):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 .\packaging\windows\build_release.ps1
 ```
 
-The installer, portable ZIP, and SHA-256 checksums are written to the `release` folder.
+Release artifacts and their checksums are written to the `release` directory.
 
-### Updating The MKVmerge version
-You can manually update the mkvmerge version the app uses, but do this only if you're sure of what you're doing, as it may require a reinstallation:
-```bash
-# Navigate to the app's installation directory, e.g. on Windows:
-"C:\\Program Files (x86)\\MKV Muxing Batch GUI"
-# Go to Resources\\Tools\\ [your operating system], and replace mkvmerge.exe and mkvpropedit.exe with the newer version you have
-```
+### Updating MKVToolNix
 
-> For linux users it's recommended to just clear `Resources\\Tools\\ [your operating system]` folder and then install mkvtoolnix on your system from [here](https://mkvtoolnix.download/downloads.html) and the app will automatically detect it.
+The Windows package includes `mkvmerge` and `mkvpropedit`. Advanced users can replace them inside the application’s `Resources\Tools\Windows64` directory. Keep both executables from the same MKVToolNix release and reinstall the application if an update causes incompatibilities.
 
-## 🙏Attribution
-- The application relies heavily on [MKVToolNix](https://gitlab.com/mbunkus/mkvtoolnix), so a big thanks to them.
-- Thanks to my friends who helped test the app and offered numerous ideas.
+On Linux, clear the bundled tool directory only when you intentionally want the application to use the system MKVToolNix installation.
 
-## 🦟Report a Bug
-Any software bugs can be reported on the fork's [issues page](https://github.com/orphick/mkv-muxing-batch/issues). Suggestions for future updates are also welcome.
+## Roots and acknowledgements
 
-## 🏷License
+MKV Muxing Batch began as a fork of [yaser01/mkv-muxing-batch-gui](https://github.com/yaser01/mkv-muxing-batch-gui). The foundation, early interface, and breadth of muxing controls came from that project and its contributors.
 
-[![GitHub](https://img.shields.io/github/license/yaser01/mkv-muxing-batch-gui?style=for-the-badge)](https://github.com/yaser01/mkv-muxing-batch-gui/blob/main/LICENSE)
+The application relies on [MKVToolNix](https://gitlab.com/mbunkus/mkvtoolnix), whose work makes dependable Matroska tooling possible.
 
-<div align="right">
-<table><td>
-<a href="#start-of-content">👆 Scroll to top</a>
-</td></table>
+Thank you to everyone who reports a broken edge case, tests a large queue, or suggests a way to make repetitive media work less repetitive.
+
+## License
+
+This project is distributed under the [GNU General Public License v2.0](LICENSE).
+
+---
+
+<div align="center">
+
+**One collection. One queue. Every track where it belongs.**
+
 </div>

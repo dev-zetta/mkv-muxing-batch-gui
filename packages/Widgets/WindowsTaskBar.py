@@ -6,6 +6,10 @@ TaskBarGUID = "{56FDF344-FD6D-11d0-958A-006097C9A090}"
 comtypes.CoInitializeEx()
 from packages.Widgets.WindowsTaskBarLib import ITaskbarList3
 
+FlashWindow = ctypes.windll.user32.FlashWindow
+FlashWindow.argtypes = (wintypes.HWND, wintypes.BOOL)
+FlashWindow.restype = wintypes.BOOL
+
 
 def create_icon(icon_path):
     CreateIconFromResourceEx = ctypes.windll.user32.CreateIconFromResourceEx
@@ -22,7 +26,7 @@ def create_icon(icon_path):
 class WindowsTaskBar:
     def __init__(self, hwnd):
         super().__init__()
-        self.window_id = hwnd
+        self.window_id = int(hwnd)
         self.taskbar = cc.CreateObject(
             TaskBarGUID,
             interface=ITaskbarList3, clsctx=comtypes.CLSCTX_ALL)
@@ -42,7 +46,7 @@ class WindowsTaskBar:
             self.taskbar.SetProgressState(self.window_id, -15)
 
         elif value == 'done':
-            ctypes.windll.user32.FlashWindow(self.window_id, True)
+            FlashWindow(wintypes.HWND(self.window_id), True)
 
     def setProgress(self, value: int):
         value = min(value, 100)

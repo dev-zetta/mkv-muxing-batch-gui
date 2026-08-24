@@ -1,9 +1,9 @@
 # -*- coding: mbcs -*-
 
 from ctypes import *
-from comtypes import CoClass, COMMETHOD, GUID, IUnknown, wireHWND
+from comtypes import CoClass, COMMETHOD, GUID, IUnknown
 from ctypes import HRESULT
-from ctypes.wintypes import tagRECT, HICON
+from ctypes.wintypes import BOOL, HICON, HWND, tagRECT
 from packages.Startup.GlobalFiles import TaskBarLibFilePath
 _lcid = 0  # change this if required
 typelib_path = TaskBarLibFilePath
@@ -34,25 +34,25 @@ ITaskbarList._methods_ = [
         [],
         HRESULT,
         'AddTab',
-        (['in'], c_int, 'hwnd')
+        (['in'], HWND, 'hwnd')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'DeleteTab',
-        (['in'], c_int, 'hwnd')
+        (['in'], HWND, 'hwnd')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'ActivateTab',
-        (['in'], c_int, 'hwnd')
+        (['in'], HWND, 'hwnd')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'SetActivateAlt',
-        (['in'], c_int, 'hwnd')
+        (['in'], HWND, 'hwnd')
     ),
 ]
 
@@ -85,8 +85,8 @@ ITaskbarList2._methods_ = [
         [],
         HRESULT,
         'MarkFullscreenWindow',
-        (['in'], c_int, 'hwnd'),
-        (['in'], c_int, 'fFullscreen')
+        (['in'], HWND, 'hwnd'),
+        (['in'], BOOL, 'fFullscreen')
     ),
 ]
 
@@ -119,7 +119,7 @@ ITaskbarList3._methods_ = [
         [],
         HRESULT,
         'SetProgressValue',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], c_ulonglong, 'ullCompleted'),
         (['in'], c_ulonglong, 'ullTotal')
     ),
@@ -127,42 +127,42 @@ ITaskbarList3._methods_ = [
         [],
         HRESULT,
         'SetProgressState',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], TBPFLAG, 'tbpFlags')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'RegisterTab',
-        (['in'], c_int, 'hwndTab'),
-        (['in'], wireHWND, 'hwndMDI')
+        (['in'], HWND, 'hwndTab'),
+        (['in'], HWND, 'hwndMDI')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'UnregisterTab',
-        (['in'], c_int, 'hwndTab')
+        (['in'], HWND, 'hwndTab')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'SetTabOrder',
-        (['in'], c_int, 'hwndTab'),
-        (['in'], c_int, 'hwndInsertBefore')
+        (['in'], HWND, 'hwndTab'),
+        (['in'], HWND, 'hwndInsertBefore')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'SetTabActive',
-        (['in'], c_int, 'hwndTab'),
-        (['in'], c_int, 'hwndMDI'),
+        (['in'], HWND, 'hwndTab'),
+        (['in'], HWND, 'hwndMDI'),
         (['in'], TBATFLAG, 'tbatFlags')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'ThumbBarAddButtons',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], c_uint, 'cButtons'),
         (['in'], POINTER(tagTHUMBBUTTON), 'pButton')
     ),
@@ -170,7 +170,7 @@ ITaskbarList3._methods_ = [
         [],
         HRESULT,
         'ThumbBarUpdateButtons',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], c_uint, 'cButtons'),
         (['in'], POINTER(tagTHUMBBUTTON), 'pButton')
     ),
@@ -178,14 +178,14 @@ ITaskbarList3._methods_ = [
         [],
         HRESULT,
         'ThumbBarSetImageList',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], POINTER(IUnknown), 'himl')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'SetOverlayIcon',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], HICON, 'hIcon'),
         (['in'], WSTRING, 'pszDescription')
     ),
@@ -193,14 +193,14 @@ ITaskbarList3._methods_ = [
         [],
         HRESULT,
         'SetThumbnailTooltip',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], WSTRING, 'pszTip')
     ),
     COMMETHOD(
         [],
         HRESULT,
         'SetThumbnailClip',
-        (['in'], c_int, 'hwnd'),
+        (['in'], HWND, 'hwnd'),
         (['in'], POINTER(tagRECT), 'prcClip')
     ),
 ]

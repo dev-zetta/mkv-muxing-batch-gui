@@ -10,7 +10,7 @@ from PySide6.QtGui import QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QVBoxLayout,
     QGroupBox,
-    QFileDialog, QCheckBox, QLineEdit, QSizePolicy, QWidget, )
+    QFileDialog, QCheckBox, QLineEdit, QPushButton, QSizePolicy, QWidget, )
 
 from packages.Startup.Options import Options
 from packages.Tabs.GlobalSetting import GlobalSetting, get_file_name_absolute_path, write_to_log_file, \
@@ -22,6 +22,7 @@ from packages.Tabs.MuxSetting.Widgets.JobQueueLayout import JobQueueLayout
 from packages.Tabs.MuxSetting.Widgets.MakeThisAudioDefaultCheckBox import MakeThisAudioDefaultCheckBox
 from packages.Tabs.MuxSetting.Widgets.MakeThisSubtitleDefaultCheckBox import MakeThisSubtitleDefaultCheckBox
 from packages.Tabs.MuxSetting.Widgets.MakeThisTrackDefaultComboBox import MakeThisTrackDefaultComboBox
+from packages.Tabs.MuxSetting.Widgets.NameManipulationDialog import NameManipulationDialog
 from packages.Tabs.MuxSetting.Widgets.NoSpaceWarningDialog import NoSpaceWarningDialog
 from packages.Tabs.MuxSetting.Widgets.OnlyKeepThoseAudiosCheckBox import OnlyKeepThoseAudiosCheckBox
 from packages.Tabs.MuxSetting.Widgets.OnlyKeepThoseSubtitlesCheckBox import OnlyKeepThoseSubtitlesCheckBox
@@ -62,6 +63,14 @@ def check_is_there_audio_to_mux():
     return False
 
 
+def has_name_manipulation():
+    return any((
+        GlobalSetting.MUX_SETTING_VIDEO_TITLE_TEMPLATE,
+        GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE,
+        GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE,
+    ))
+
+
 # noinspection PyAttributeOutsideInit
 def check_if_at_least_one_muxing_setting_has_been_selected(window_parent):
     if check_is_there_subtitle_to_mux() or \
@@ -80,6 +89,7 @@ def check_if_at_least_one_muxing_setting_has_been_selected(window_parent):
             GlobalSetting.VIDEO_OLD_TRACKS_VIDEOS_MODIFIED_ACTIVATED or \
             GlobalSetting.VIDEO_OLD_TRACKS_AUDIOS_MODIFIED_ACTIVATED or \
             GlobalSetting.VIDEO_OLD_TRACKS_SUBTITLES_MODIFIED_ACTIVATED or \
+            has_name_manipulation() or \
             GlobalSetting.VIDEO_DEFAULT_DURATION_FPS not in ["", "Default"]:
         return True
     else:
@@ -191,6 +201,7 @@ class MuxSettingTab(QWidget):
         self.remove_old_crc_checksum_checkBox.stateChanged.connect(self.remove_old_crc_checksum_state_changed)
 
         self.keep_log_file_checkBox.stateChanged.connect(self.keep_log_file_state_changed)
+        self.name_manipulation_button.clicked.connect(self.show_name_manipulation_dialog)
         self.job_queue_layout.update_task_bar_progress_signal.connect(self.update_task_bar_progress)
         self.job_queue_layout.paused_done_signal.connect(self.paused_done)
         self.job_queue_layout.cancel_done_signal.connect(self.cancel_done)
@@ -209,6 +220,7 @@ class MuxSettingTab(QWidget):
         self.setup_keep_log_file_checkBox()
         self.setup_add_crc_checksum_checkBox()
         self.setup_remove_old_crc_checkBox()
+        self.setup_name_manipulation_button()
         self.setup_clear_job_queue_button()
         self.setup_tool_tip_hint()
         self.setup_layouts()
@@ -245,6 +257,7 @@ class MuxSettingTab(QWidget):
         self.keep_log_file_checkBox = QCheckBox()
         self.add_crc_checksum_checkBox = QCheckBox()
         self.remove_old_crc_checksum_checkBox = QCheckBox()
+        self.name_manipulation_button = QPushButton()
         self.control_queue_button = ControlQueueButton()
         self.clear_job_queue_button = QPushButton()
         self.mux_tools_layout_first_row = QHBoxLayout()
@@ -255,6 +268,7 @@ class MuxSettingTab(QWidget):
         self.mux_setting_layout.addWidget(self.destination_path_label, 0, 0)
         self.mux_setting_layout.addWidget(self.destination_path_lineEdit, 0, 1)
         self.mux_setting_layout.addWidget(self.destination_path_button, 0, 2)
+        self.mux_setting_layout.addWidget(self.name_manipulation_button, 0, 3)
         self.mux_setting_layout.addWidget(self.only_keep_those_audios_checkBox, 1, 0)
         self.mux_setting_layout.addWidget(self.only_keep_those_subtitles_checkBox, 2, 0)
         self.mux_setting_layout.addLayout(self.mux_tools_layout_first_row, 1, 1)
@@ -297,6 +311,29 @@ class MuxSettingTab(QWidget):
         self.remove_old_crc_checksum_checkBox.setToolTip(
             "Remove Old CRC from the end of the file (will do nothing if there is "
             "none)")
+
+    def setup_name_manipulation_button(self):
+        self.name_manipulation_button.setIcon(GlobalIcons.RenameIcon)
+        self.name_manipulation_button.setToolTip(
+            "Batch-edit the Matroska video title and audio/subtitle track names"
+        )
+        self.update_name_manipulation_button_text()
+
+    def update_name_manipulation_button_text(self):
+        active_rules = sum(bool(value) for value in (
+            GlobalSetting.MUX_SETTING_VIDEO_TITLE_TEMPLATE,
+            GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE,
+            GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE,
+        ))
+        if active_rules:
+            self.name_manipulation_button.setText(f"Names ({active_rules})...")
+        else:
+            self.name_manipulation_button.setText("Names...")
+
+    def show_name_manipulation_dialog(self):
+        dialog = NameManipulationDialog(parent=self)
+        dialog.execute()
+        self.update_name_manipulation_button_text()
 
     def setup_keep_log_file_checkBox(self):
         self.keep_log_file_checkBox.setText("Keep Log File")
@@ -613,6 +650,7 @@ class MuxSettingTab(QWidget):
         self.make_this_audio_default_comboBox.setEnabled(False)
         self.add_crc_checksum_checkBox.setEnabled(False)
         self.remove_old_crc_checksum_checkBox.setEnabled(False)
+        self.name_manipulation_button.setEnabled(False)
 
     def enable_editable_widgets(self):
         self.only_keep_those_subtitles_checkBox.setEnabled(True)
@@ -626,6 +664,7 @@ class MuxSettingTab(QWidget):
         self.make_this_audio_default_comboBox.setEnabled(self.make_this_audio_default_checkBox.isChecked())
         self.add_crc_checksum_checkBox.setEnabled(True)
         self.remove_old_crc_checksum_checkBox.setEnabled(True)
+        self.name_manipulation_button.setEnabled(True)
 
     def only_keep_those_audios_close_list(self):
         GlobalSetting.MUX_SETTING_ONLY_KEEP_THOSE_AUDIOS_TRACKS_LANGUAGES = self.only_keep_those_audios_multi_choose_comboBox.tracks_language

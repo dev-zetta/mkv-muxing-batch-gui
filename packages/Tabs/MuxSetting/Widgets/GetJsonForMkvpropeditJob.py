@@ -6,6 +6,10 @@ import sys
 from packages.Startup import GlobalFiles
 from packages.Startup.PreDefined import ISO_639_2_LANGUAGES
 from packages.Tabs.GlobalSetting import GlobalSetting
+from packages.Tabs.MuxSetting.Widgets.NameTemplate import (
+    escape_json_argument,
+    render_name_template,
+)
 from packages.Tabs.MuxSetting.Widgets.SingleJobData import SingleJobData
 from packages.Widgets.SingleAttachmentData import SingleAttachmentData
 from packages.Widgets.SingleTrackData import SingleTrackData
@@ -70,6 +74,7 @@ class GetJsonForMkvpropeditJob:
         self.modify_old_videos_command = ""
         self.modify_old_audios_command = ""
         self.modify_old_subtitles_command = ""
+        self.name_manipulation_command = ""
         self.final_command = ""
         self.json_info = ""
         self.tracks_json_info = ""
@@ -89,6 +94,7 @@ class GetJsonForMkvpropeditJob:
         self.modify_old_audios_tracks()
         self.make_this_subtitle_default_forced()
         self.make_this_audio_default_forced()
+        self.setup_name_manipulation()
         self.setup_ui_language()
         self.setup_input_video_command()
         self.setup_final_command()
@@ -684,6 +690,52 @@ class GetJsonForMkvpropeditJob:
                             self.change_default_forced_audio_track_setting_source_video_command += ''.join(
                                 change_default_audio_commands_list)
 
+    def setup_name_manipulation(self):
+        command_list = []
+        video_file_name = self.job.video_name
+
+        if GlobalSetting.MUX_SETTING_VIDEO_TITLE_TEMPLATE:
+            old_title = self.json_info.get("container", {}).get("properties", {}).get("title", "")
+            title = render_name_template(
+                GlobalSetting.MUX_SETTING_VIDEO_TITLE_TEMPLATE,
+                video_file_name,
+                old_name=old_title,
+            )
+            command_list.append(add_json_line("--edit"))
+            command_list.append(add_json_line("info"))
+            command_list.append(add_json_line("--set"))
+            command_list.append(add_json_line(escape_json_argument(f"title={title}")))
+
+        if GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE:
+            for index, track in enumerate(self.audios_track_json_info, start=1):
+                track_name = render_name_template(
+                    GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE,
+                    video_file_name,
+                    old_name=track.track_name,
+                    index=index,
+                    language=track.language,
+                )
+                command_list.append(add_json_line("--edit"))
+                command_list.append(add_json_line("track:" + increase_id_by_one(track.id)))
+                command_list.append(add_json_line("--set"))
+                command_list.append(add_json_line(escape_json_argument(f"name={track_name}")))
+
+        if GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE:
+            for index, track in enumerate(self.subtitles_track_json_info, start=1):
+                track_name = render_name_template(
+                    GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE,
+                    video_file_name,
+                    old_name=track.track_name,
+                    index=index,
+                    language=track.language,
+                )
+                command_list.append(add_json_line("--edit"))
+                command_list.append(add_json_line("track:" + increase_id_by_one(track.id)))
+                command_list.append(add_json_line("--set"))
+                command_list.append(add_json_line(escape_json_argument(f"name={track_name}")))
+
+        self.name_manipulation_command = "".join(command_list)
+
     # noinspection PyListCreation
     def setup_ui_language(self):
         ui_language_commands_list = []
@@ -710,6 +762,7 @@ class GetJsonForMkvpropeditJob:
         self.final_command += self.modify_old_videos_command
         self.final_command += self.modify_old_audios_command
         self.final_command += self.modify_old_subtitles_command
+        self.final_command += self.name_manipulation_command
         self.final_command += self.discard_old_attachments_command
         self.final_command += self.attachments_attach_command
         self.final_command += self.chapter_attach_command

@@ -10,6 +10,10 @@ from sys import platform
 from packages.Startup import GlobalFiles
 from packages.Startup.PreDefined import ISO_639_2_LANGUAGES
 from packages.Tabs.GlobalSetting import GlobalSetting
+from packages.Tabs.MuxSetting.Widgets.NameTemplate import (
+    escape_json_argument,
+    render_name_template,
+)
 from packages.Tabs.MuxSetting.Widgets.SingleJobData import SingleJobData
 from packages.Widgets.SingleAttachmentData import SingleAttachmentData
 from packages.Widgets.SingleTrackData import SingleTrackData
@@ -90,6 +94,7 @@ class GetJsonForMkvmergeJob:
         self.specify_subtitle_track_source_video_command = ""
         self.specify_audio_track_source_video_command = ""
         self.video_default_duration_fps_command = ""
+        self.name_manipulation_command = ""
         self.track_order_line = ""
         self.track_order_command = ""
         self.final_command = ""
@@ -119,6 +124,7 @@ class GetJsonForMkvmergeJob:
         self.setup_which_old_audios_to_keep()
         self.make_this_subtitle_default_forced()
         self.make_this_audio_default_forced()
+        self.setup_name_manipulation()
         self.setup_ui_language()
         self.setup_output_video_command()
         self.setup_input_video_command()
@@ -301,9 +307,19 @@ class GetJsonForMkvmergeJob:
                     subtitle_command_list.append(
                         add_json_line("0:" + ISO_639_2_LANGUAGES[self.job.subtitle_language[i]]))
                     # add subtitle track name
-                    if self.job.subtitle_track_name != "":
+                    subtitle_track_name = self.job.subtitle_track_name[i]
+                    if GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE:
+                        subtitle_track_name = render_name_template(
+                            GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE,
+                            self.job.video_name,
+                            old_name=subtitle_track_name,
+                            index=len(self.subtitles_track_json_info) + i + 1,
+                            language=ISO_639_2_LANGUAGES[self.job.subtitle_language[i]],
+                        )
+                    if subtitle_track_name != "":
                         subtitle_command_list.append(add_json_line("--track-name"))
-                        subtitle_command_list.append(add_json_line("0:" + self.job.subtitle_track_name[i]))
+                        subtitle_command_list.append(
+                            add_json_line(escape_json_argument("0:" + subtitle_track_name)))
                     # add subtitle set default
                     if self.job.subtitle_set_default[i]:
                         subtitle_command_list.append(add_json_line("--default-track"))
@@ -425,9 +441,18 @@ class GetJsonForMkvmergeJob:
                     audio_command_list.append(
                         add_json_line("0:" + ISO_639_2_LANGUAGES[self.job.audio_language[i]]))
                     # add audio track name
-                    if self.job.audio_track_name != "":
+                    audio_track_name = self.job.audio_track_name[i]
+                    if GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE:
+                        audio_track_name = render_name_template(
+                            GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE,
+                            self.job.video_name,
+                            old_name=audio_track_name,
+                            index=len(self.audios_track_json_info) + i + 1,
+                            language=ISO_639_2_LANGUAGES[self.job.audio_language[i]],
+                        )
+                    if audio_track_name != "":
                         audio_command_list.append(add_json_line("--track-name"))
-                        audio_command_list.append(add_json_line("0:" + self.job.audio_track_name[i]))
+                        audio_command_list.append(add_json_line(escape_json_argument("0:" + audio_track_name)))
                     # add audio set default
                     if self.job.audio_set_default[i]:
                         audio_command_list.append(add_json_line("--default-track"))
@@ -898,6 +923,48 @@ class GetJsonForMkvmergeJob:
             ui_language_commands_list.append(add_json_line("en_US"))
         self.ui_language_command = "".join(ui_language_commands_list)
 
+    def setup_name_manipulation(self):
+        command_list = []
+        video_file_name = self.job.video_name
+
+        if GlobalSetting.MUX_SETTING_VIDEO_TITLE_TEMPLATE:
+            old_title = self.json_info.get("container", {}).get("properties", {}).get("title", "")
+            title = render_name_template(
+                GlobalSetting.MUX_SETTING_VIDEO_TITLE_TEMPLATE,
+                video_file_name,
+                old_name=old_title,
+            )
+            command_list.append(add_json_line("--title"))
+            command_list.append(add_json_line(escape_json_argument(title)))
+
+        if GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE:
+            for index, track in enumerate(self.audios_track_json_info, start=1):
+                track_name = render_name_template(
+                    GlobalSetting.MUX_SETTING_AUDIO_NAME_TEMPLATE,
+                    video_file_name,
+                    old_name=track.track_name,
+                    index=index,
+                    language=track.language,
+                )
+                command_list.append(add_json_line("--track-name"))
+                command_list.append(
+                    add_json_line(escape_json_argument(f"{track.id}:{track_name}")))
+
+        if GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE:
+            for index, track in enumerate(self.subtitles_track_json_info, start=1):
+                track_name = render_name_template(
+                    GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE,
+                    video_file_name,
+                    old_name=track.track_name,
+                    index=index,
+                    language=track.language,
+                )
+                command_list.append(add_json_line("--track-name"))
+                command_list.append(
+                    add_json_line(escape_json_argument(f"{track.id}:{track_name}")))
+
+        self.name_manipulation_command = "".join(command_list)
+
     # noinspection PyListCreation
     def setup_output_video_command(self):
         if GlobalSetting.OVERWRITE_SOURCE_FILES:
@@ -937,6 +1004,7 @@ class GetJsonForMkvmergeJob:
         self.final_command += self.old_subtitle_append_command
         self.final_command += self.change_default_forced_subtitle_track_setting_source_video_command
         self.final_command += self.change_default_forced_audio_track_setting_source_video_command
+        self.final_command += self.name_manipulation_command
 
         self.final_command += self.video_default_duration_fps_command
         self.final_command += self.input_video_command

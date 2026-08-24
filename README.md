@@ -83,6 +83,9 @@ https://github.com/yaser01/mkv-muxing-batch-gui/assets/52576632/33f8bf3e-600c-4e
 - Modify existing tracks **(each track separately)** like: track name,delete,set default,set forced and language, even you can change their order with shortcuts `Ctrl + Up Arrow / Ctrl + Down Arrow`
 ### Muxing Options
 - Override global settings by changing subtitle/audio settings (delay, track name, language) for each subtitle/audio file
+- Batch-edit Matroska video titles and audio/subtitle track names from the **Names...** dialog
+  - Templates support `{old}`, `{filename}`, `{stem}`, `{index}`, and `{language}` placeholders
+  - Blank template fields leave the corresponding metadata unchanged
 - Save a log file
 - Set your default directories, languages, and file extensions to be remembered for future runs
 - Optimize your muxing by modifying the source file when feasible. A prompt will appear when this option is available

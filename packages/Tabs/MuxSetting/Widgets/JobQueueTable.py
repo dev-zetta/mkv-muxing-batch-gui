@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtGui import Qt, QFontMetrics
 from PySide6.QtWidgets import QAbstractItemView, QTableWidgetItem, QHeaderView, QLabel
 
@@ -12,6 +12,7 @@ from packages.Tabs.GlobalSetting import GlobalSetting, get_readable_filesize
 from packages.Tabs.MuxSetting.Widgets.ConfirmUsingMkvpropedit import ConfirmUsingMkvpropedit
 from packages.Tabs.MuxSetting.Widgets.MuxingParams import MuxingParams
 from packages.Tabs.MuxSetting.Widgets.ProgreeBar import ProgressBar
+from packages.Tabs.MuxSetting.Widgets.QueueSessionStore import QueueSessionStore
 from packages.Tabs.MuxSetting.Widgets.SingleJobData import SingleJobData
 from packages.Tabs.MuxSetting.Widgets.StartMuxingWorker import StartMuxingWorker
 from packages.Tabs.MuxSetting.Widgets.StatusWidget import StatusWidget
@@ -206,18 +207,26 @@ class JobQueueTable(TableWidget):
     update_total_progress_signal = Signal(int)
     increase_number_of_done_jobs_signal = Signal()
     set_number_of_jobs_signal = Signal(int)
+    set_number_of_done_jobs_signal = Signal(int)
     paused_done_signal = Signal()
     cancel_done_signal = Signal()
     pause_from_error_occurred_signal = Signal()
     finished_all_jobs_signal = Signal()
 
-    def __init__(self):
+    def __init__(self, queue_session_path=None):
         super().__init__()
         self.data = []  # type: list[SingleJobData]
         self.total_progress = 0
         self.number_of_jobs = 0
         self.number_of_done_jobs = 0
         self.need_column_width_set = True
+        self.queue_session_store = QueueSessionStore(queue_session_path)
+        self.queue_session_state = "queued"
+        self.active_job_index = None
+        self.persist_timer = QTimer(self)
+        self.persist_timer.setSingleShot(True)
+        self.persist_timer.setInterval(750)
+        self.persist_timer.timeout.connect(self.persist_queue)
         self.column_ids = {
             "Name": 0,
             "Status": 1,
@@ -305,7 +314,59 @@ class JobQueueTable(TableWidget):
         if output_video_size_bytes == 0:
             self.delete_video_output_with_zero_size(file_path=finished_job.output_video_absolute_path)
         size_after_muxing = " " + get_readable_filesize(output_video_size_bytes)
+        finished_job.size_after_muxing = size_after_muxing
         self.setCellWidget(row_index, self.column_ids["Size After"], QLabel(size_after_muxing))
+
+    def set_recovered_row_values(self, job, row_index):
+        self.set_row_value_id(row_index)
+
+        name_label = QLabel(job.video_name_displayed or chr(0x200E) + " " + job.video_name + "   ")
+        name_label.setToolTip(job.video_name)
+        self.setCellWidget(row_index, self.column_ids["Name"], name_label)
+
+        if job.done and job.error_occurred:
+            status = ErrorCell(tool_tip="Error Happened\nDouble click for more details")
+        elif job.done:
+            status = OkCell(tool_tip="Done")
+        else:
+            status = WarningCell(tool_tip="Recovered after shutdown — ready to resume")
+        self.setCellWidget(row_index, self.column_ids["Status"], status)
+
+        if len(job.audio_name) == 1:
+            audio = InfoWithOptionsCell(tool_tip=generate_tool_tip_for_audio_file(
+                audio_full_path=job.audio_name_absolute[0], audio_name=job.audio_name[0],
+                audio_delay=job.audio_delay[0], audio_language=job.audio_language[0],
+                audio_track_name=job.audio_track_name[0], audio_set_default=job.audio_set_default[0],
+                audio_set_forced=job.audio_set_forced[0], show_full_path=False))
+        elif len(job.audio_name) > 1:
+            audio = InfoWithOptionsCell(tool_tip="Multiple Audios\nDouble click for more details")
+        else:
+            audio = WarningCell(tool_tip="No Audio File")
+        self.setCellWidget(row_index, self.column_ids["Audio"], audio)
+
+        if len(job.subtitle_name) == 1:
+            subtitle = InfoWithOptionsCell(tool_tip=generate_tool_tip_for_subtitle_file(
+                subtitle_full_path=job.subtitle_name_absolute[0], subtitle_name=job.subtitle_name[0],
+                subtitle_delay=job.subtitle_delay[0], subtitle_language=job.subtitle_language[0],
+                subtitle_track_name=job.subtitle_track_name[0],
+                subtitle_set_default=job.subtitle_set_default[0],
+                subtitle_set_forced=job.subtitle_set_forced[0], show_full_path=False))
+        elif len(job.subtitle_name) > 1:
+            subtitle = InfoWithOptionsCell(tool_tip="Multiple Subtitles\nDouble click for more details")
+        else:
+            subtitle = WarningCell(tool_tip="No Subtitle File")
+        self.setCellWidget(row_index, self.column_ids["Subtitle"], subtitle)
+
+        if job.chapter_found:
+            chapter = InfoCell(tool_tip=generate_tool_tip_for_chapter_file(
+                chapter_full_path=job.chapter_name_absolute, chapter_name=job.chapter_name,
+                show_full_path=False))
+        else:
+            chapter = WarningCell(tool_tip="No Chapter File")
+        self.setCellWidget(row_index, self.column_ids["Chapter"], chapter)
+        self.setCellWidget(row_index, self.column_ids["Size Before"], QLabel(job.size_before_muxing))
+        self.setCellWidget(row_index, self.column_ids["Progress"], ProgressBar(value=job.progress))
+        self.setCellWidget(row_index, self.column_ids["Size After"], QLabel(job.size_after_muxing))
 
     def set_row_value_chapter(self, new_job, new_row_id):
         if len(GlobalSetting.CHAPTER_FILES_LIST) > new_row_id:
@@ -492,6 +553,7 @@ class JobQueueTable(TableWidget):
                             subtitle_set_default=self.data[row_index].subtitle_set_default[0],
                             subtitle_set_forced=self.data[row_index].subtitle_set_forced[0],
                             show_full_path=False))
+                    self.persist_queue()
 
             else:
                 warning_dialog = WarningDialog(window_title="Subtitle Info", info_message="No subtitle found!",
@@ -546,6 +608,7 @@ class JobQueueTable(TableWidget):
                             audio_set_default=self.data[row_index].audio_set_default[0],
                             audio_set_forced=self.data[row_index].audio_set_forced[0],
                             show_full_path=False))
+                    self.persist_queue()
 
             else:
                 warning_dialog = WarningDialog(window_title="Audio Info", info_message="No audio found!", parent=self)
@@ -597,7 +660,7 @@ class JobQueueTable(TableWidget):
             )
 
     def setup_queue(self):
-        self.clear_queue()
+        self.clear_queue(delete_session=False)
         self.hide()
         self.setRowCount(len(GlobalSetting.VIDEO_FILES_LIST))
         for i in range(len(GlobalSetting.VIDEO_FILES_LIST)):
@@ -624,11 +687,60 @@ class JobQueueTable(TableWidget):
         self.set_number_of_jobs_signal.emit(self.number_of_jobs)
         if len(self.data) > 0:
             GlobalSetting.JOB_QUEUE_EMPTY = False
+            self.queue_session_state = "queued"
+            self.persist_queue()
         else:
             GlobalSetting.JOB_QUEUE_EMPTY = True
 
+    def restore_queue(self):
+        recovered = self.queue_session_store.load()
+        if not recovered:
+            return False
+        self.data = recovered["jobs"]
+        self.queue_session_state = "paused"
+        self.active_job_index = None
+        self.hide()
+        self.setRowCount(len(self.data))
+        for row_index, job in enumerate(self.data):
+            self.set_recovered_row_values(job, row_index)
+        self.show()
+        self.number_of_jobs = len(self.data)
+        self.number_of_done_jobs = sum(job.done and not job.error_occurred for job in self.data)
+        self.total_progress = sum(job.progress for job in self.data)
+        total_progress = self.total_progress // self.number_of_jobs if self.number_of_jobs else 0
+        self.set_number_of_jobs_signal.emit(self.number_of_jobs)
+        self.set_number_of_done_jobs_signal.emit(self.number_of_done_jobs)
+        self.update_total_progress_signal.emit(total_progress)
+        GlobalSetting.JOB_QUEUE_EMPTY = not bool(self.data)
+        GlobalSetting.JOB_QUEUE_FINISHED = False
+        self.show_necessary_columns()
+        self.check_if_name_need_resize_column_to_fit_content()
+        self.update_widget()
+        # Rewrite immediately so an interrupted job's stale partial progress
+        # cannot come back after another crash before the user presses Resume.
+        self.persist_queue()
+        return bool(self.data)
+
+    def schedule_persist_queue(self):
+        if self.data:
+            self.persist_timer.start()
+
+    def persist_queue(self):
+        self.persist_timer.stop()
+        self.queue_session_store.save(
+            self.data,
+            state=self.queue_session_state,
+            active_job=self.active_job_index,
+        )
+
+    def remove_persistent_queue(self):
+        self.persist_timer.stop()
+        self.queue_session_store.delete()
+
     # noinspection PyAttributeOutsideInit
     def start_muxing(self):
+        self.queue_session_state = "running"
+        self.persist_queue()
         self.start_muxing_thread = QThread()
         self.start_muxing_worker = StartMuxingWorker(self.data)
         self.start_muxing_worker.moveToThread(self.start_muxing_thread)
@@ -651,13 +763,18 @@ class JobQueueTable(TableWidget):
         self.start_muxing_worker.crc_progress_signal.connect(self.update_crc_progress)
         self.start_muxing_thread.start()
 
-    def clear_queue(self):
+    def clear_queue(self, delete_session=True):
+        self.persist_timer.stop()
         self.data = []  # type: list[SingleJobData]
         self.setRowCount(0)
         self.total_progress = 0
         self.number_of_jobs = 0
         self.number_of_done_jobs = 0
         GlobalSetting.JOB_QUEUE_EMPTY = True
+        self.active_job_index = None
+        self.queue_session_state = "queued"
+        if delete_session:
+            self.queue_session_store.delete()
 
     def show_confirm_using_mkvpropedit(self):
         confirm_dialog = ConfirmUsingMkvpropedit(parent=self)
@@ -692,6 +809,7 @@ class JobQueueTable(TableWidget):
             self.update_muxing_progress(job_index, 0, params)
         else:
             self.update_muxing_progress(job_index, new_progress, params)
+        self.schedule_persist_queue()
 
     def update_crc_progress(self, progress):
         self.update_status_job_widget("CRC: " + str(progress))
@@ -773,6 +891,7 @@ class JobQueueTable(TableWidget):
         self.delete_source_file_if_overwritten_enabled(job_index=job_index)
         self.rename_output_file_if_needed(job_index=job_index)
         self.set_row_value_size_after_muxing(self.data[job_index], job_index)
+        self.persist_queue()
 
     def job_error_occurred(self, job_index):
         self.data[job_index].done = True
@@ -782,6 +901,7 @@ class JobQueueTable(TableWidget):
         self.set_job_status_bad(row_index=job_index)
         self.rename_output_file_if_needed(job_index=job_index)
         self.set_row_value_size_after_muxing(self.data[job_index], job_index)
+        self.persist_queue()
 
     def set_job_status_ok(self, row_index):
         self.job_status_widget.stop_loading()
@@ -796,17 +916,25 @@ class JobQueueTable(TableWidget):
 
     # noinspection PyAttributeOutsideInit
     def new_job_started(self, row_index):
+        self.queue_session_state = "running"
+        self.active_job_index = row_index
         self.job_status_widget = StatusWidget()
         self.setCellWidget(row_index, self.column_ids["Status"], self.job_status_widget)
         self.job_status_widget.start_loading()
+        self.persist_queue()
 
     def pause_muxing(self):
         self.start_muxing_worker.pause = True
 
     def paused_done(self):
+        self.queue_session_state = "paused"
+        self.active_job_index = None
+        self.persist_queue()
         self.paused_done_signal.emit()
 
     def finished_all_jobs(self):
+        self.active_job_index = None
+        self.remove_persistent_queue()
         self.finished_all_jobs_signal.emit()
 
     def pause_from_error_occurred(self):

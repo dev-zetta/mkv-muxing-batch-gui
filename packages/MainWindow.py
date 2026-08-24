@@ -82,6 +82,8 @@ class MainWindow(MyMainWindow):
         self.setMinimumSize(self.minimumSizeHint())
 
     def closeEvent(self, event: PySide6.QtGui.QCloseEvent):
+        if not GlobalSetting.JOB_QUEUE_EMPTY:
+            self.tabs.mux_setting_tab.job_queue_layout.persist_queue()
         muxing_on = GlobalSetting.MUXING_ON
         if muxing_on:
             want_to_exit = check_if_exit_when_muxing_on()

@@ -87,6 +87,7 @@ https://github.com/yaser01/mkv-muxing-batch-gui/assets/52576632/33f8bf3e-600c-4e
   - Templates support `{old}`, `{filename}`, `{stem}`, `{index}`, and `{language}` placeholders
   - Blank template fields leave the corresponding metadata unchanged
 - Save a log file
+- Automatically restore unfinished queues after a crash or restart; completed jobs stay completed and the interrupted job restarts safely
 - Set your default directories, languages, and file extensions to be remembered for future runs
 - Optimize your muxing by modifying the source file when feasible. A prompt will appear when this option is available
 ## 📝Notes

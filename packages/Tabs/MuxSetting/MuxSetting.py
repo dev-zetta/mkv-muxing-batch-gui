@@ -159,6 +159,7 @@ class MuxSettingTab(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.recovery_checked = False
         self.create_widgets()
         self.setup_widgets()
         self.connect_signals()
@@ -568,6 +569,7 @@ class MuxSettingTab(QWidget):
         self.make_this_audio_default_checkBox.set_tool_tip_hint_no_check()
 
     def add_to_queue_button_clicked(self):
+        self.job_queue_groupBox.setTitle("Job Queue")
         self.job_queue_layout.setup_queue()
         self.enable_muxing_setting()
         if not GlobalSetting.JOB_QUEUE_EMPTY:
@@ -630,6 +632,7 @@ class MuxSettingTab(QWidget):
 
     def clear_job_queue_button_clicked(self):
         self.job_queue_layout.clear_queue()
+        self.job_queue_groupBox.setTitle("Job Queue")
         self.control_queue_button.set_state_add_to_queue()
         self.clear_job_queue_button.setDisabled(True)
         self.control_queue_button.setDisabled(False)
@@ -713,9 +716,10 @@ class MuxSettingTab(QWidget):
         self.abort_on_errors_checkBox.setEnabled(False)
         self.keep_log_file_checkBox.setEnabled(False)
 
-    @staticmethod
-    def abort_on_errors_state_changed(state):
+    def abort_on_errors_state_changed(self, state):
         GlobalSetting.MUX_SETTING_ABORT_ON_ERRORS = bool(state)
+        if not GlobalSetting.JOB_QUEUE_EMPTY:
+            self.job_queue_layout.persist_queue()
 
     def add_crc_checksum_state_changed(self, state):
         if state:
@@ -724,6 +728,8 @@ class MuxSettingTab(QWidget):
             self.remove_old_crc_checksum_checkBox.setChecked(True)
         else:
             GlobalSetting.MUX_SETTING_ADD_CRC = False
+        if not GlobalSetting.JOB_QUEUE_EMPTY:
+            self.job_queue_layout.persist_queue()
 
     def remove_old_crc_checksum_state_changed(self, state):
         if state:
@@ -732,10 +738,13 @@ class MuxSettingTab(QWidget):
             GlobalSetting.MUX_SETTING_ADD_CRC = False
             GlobalSetting.MUX_SETTING_REMOVE_OLD_CRC = False
             self.add_crc_checksum_checkBox.setChecked(False)
+        if not GlobalSetting.JOB_QUEUE_EMPTY:
+            self.job_queue_layout.persist_queue()
 
-    @staticmethod
-    def keep_log_file_state_changed(state):
+    def keep_log_file_state_changed(self, state):
         GlobalSetting.MUX_SETTING_KEEP_LOG_FILE = bool(state)
+        if not GlobalSetting.JOB_QUEUE_EMPTY:
+            self.job_queue_layout.persist_queue()
 
     def start_multiplexing_button_clicked(self):
         mkvpropedit_wanted_to_be_used = check_if_mkvpropedit_wanted_to_be_used(window_parent=self)
@@ -828,6 +837,27 @@ class MuxSettingTab(QWidget):
 
     def set_preset_options(self):
         self.set_default_directory()
+        self.restore_persistent_queue()
+
+    def restore_persistent_queue(self):
+        if self.recovery_checked:
+            return False
+        self.recovery_checked = True
+        if not self.job_queue_layout.restore_queue():
+            return False
+        self.destination_path_lineEdit.setText(GlobalSetting.DESTINATION_FOLDER_PATH)
+        self.abort_on_errors_checkBox.setChecked(GlobalSetting.MUX_SETTING_ABORT_ON_ERRORS)
+        self.keep_log_file_checkBox.setChecked(GlobalSetting.MUX_SETTING_KEEP_LOG_FILE)
+        self.add_crc_checksum_checkBox.setChecked(GlobalSetting.MUX_SETTING_ADD_CRC)
+        self.remove_old_crc_checksum_checkBox.setChecked(GlobalSetting.MUX_SETTING_REMOVE_OLD_CRC)
+        self.update_name_manipulation_button_text()
+        self.disable_editable_widgets()
+        self.enable_muxing_setting()
+        self.control_queue_button.set_state_resume_multiplexing()
+        self.clear_job_queue_button.setDisabled(False)
+        self.control_queue_button.setDisabled(False)
+        self.job_queue_groupBox.setTitle("Job Queue — recovered, ready to resume")
+        return True
 
     def update_theme_mode_state(self):
         self.make_this_audio_default_comboBox.update_theme_mode_state()

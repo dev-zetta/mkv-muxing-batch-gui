@@ -1,5 +1,3 @@
-import time
-
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QGridLayout, QLabel
 
@@ -16,9 +14,9 @@ class JobQueueLayout(QGridLayout):
     finished_all_jobs_signal = Signal()
     pause_from_error_occurred_signal = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, queue_session_path=None):
         super().__init__(parent=parent)
-        self.table = JobQueueTable()
+        self.table = JobQueueTable(queue_session_path=queue_session_path)
         self.total_progress_label = QLabel("Total Progress:")
         self.total_progress_progressBar = ProgressBar(value=0, show_percentage=True)
         self.job_dividing_line = JobDividingLine()
@@ -32,6 +30,7 @@ class JobQueueLayout(QGridLayout):
         self.table.increase_number_of_done_jobs_signal.connect(
             self.increase_completed_jobs)
         self.table.set_number_of_jobs_signal.connect(self.set_number_of_jobs)
+        self.table.set_number_of_done_jobs_signal.connect(self.set_number_of_done_jobs)
 
     def setup_layout(self):
         self.addWidget(self.table, 0, 0, 1, -1)
@@ -45,6 +44,12 @@ class JobQueueLayout(QGridLayout):
 
     def setup_queue(self):
         self.table.setup_queue()
+
+    def restore_queue(self):
+        return self.table.restore_queue()
+
+    def persist_queue(self):
+        self.table.persist_queue()
 
     def show_necessary_table_columns(self):
         self.table.show_necessary_columns()
@@ -72,6 +77,9 @@ class JobQueueLayout(QGridLayout):
 
     def set_number_of_jobs(self, number_of_jobs):
         self.completed_jobs_counter.initiate_number_of_jobs(number_of_jobs)
+
+    def set_number_of_done_jobs(self, number_of_done_jobs):
+        self.completed_jobs_counter.set_number_of_completed_jobs(number_of_done_jobs)
 
     def pause_muxing(self):
         self.table.pause_muxing()

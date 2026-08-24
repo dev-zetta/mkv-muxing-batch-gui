@@ -7,7 +7,6 @@ from PySide6.QtGui import Qt, QFontMetrics
 from PySide6.QtWidgets import QAbstractItemView, QTableWidgetItem, QHeaderView, QLabel
 
 from packages.Startup.Options import Options
-from packages.Startup.InitializeScreenResolution import screen_size
 from packages.Tabs.GlobalSetting import GlobalSetting, get_readable_filesize
 from packages.Tabs.MuxSetting.Widgets.ConfirmUsingMkvpropedit import ConfirmUsingMkvpropedit
 from packages.Tabs.MuxSetting.Widgets.MuxingParams import MuxingParams
@@ -249,14 +248,17 @@ class JobQueueTable(TableWidget):
 
     def setup_horizontal_header(self):
         self.horizontalHeader().setHighlightSections(False)
-        self.horizontal_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(5, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(6, QHeaderView.ResizeMode.Interactive)
-        self.horizontal_header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
+        self.horizontal_header.setMinimumSectionSize(54)
+        self.horizontal_header.setStretchLastSection(False)
+        self.horizontal_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.horizontal_header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.horizontal_header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.horizontal_header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.horizontal_header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.horizontal_header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        self.horizontal_header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
+        self.setColumnWidth(6, 135)
 
     def create_horizontal_header(self):
         self.horizontal_header = self.horizontalHeader()
@@ -646,18 +648,8 @@ class JobQueueTable(TableWidget):
             self.showColumn(self.column_ids["Chapter"])
 
     def update_widget(self):
-        if self.need_column_width_set:
-            header_width = self.horizontal_header.width()
-            self.horizontal_header.setMinimumSectionSize(header_width * 4 // 25)
-            self.setColumnWidth(0, int(header_width * 8) // 10)
-            self.need_column_width_set = False
-
-        if self.columnWidth(0) > screen_size.width() // 7:
-            self.setColumnWidth(1, screen_size.width() // 14)
-        else:
-            self.setColumnWidth(
-                1, self.columnWidth(0) // 2
-            )
+        self.need_column_width_set = False
+        self.setColumnWidth(self.column_ids["Progress"], 135)
 
     def setup_queue(self):
         self.clear_queue(delete_session=False)

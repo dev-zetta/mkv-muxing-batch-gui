@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QToolTip, QStyleFactory
 from packages.Startup.Options import Options, read_option_file
 from packages.Startup.GlobalFiles import SettingJsonInfoFilePath
 from packages.Startup.SetupThems import get_light_palette, get_dark_palette
+from packages.Startup.AppStyle import get_dark_glass_stylesheet, get_light_glass_stylesheet
 
 
 def set_application_style():
@@ -28,12 +29,14 @@ def keep_screen_resolution_good():
 def apply_light_mode():
     palette = get_light_palette()
     MainApplication.setPalette(palette)
+    MainApplication.setStyleSheet(get_light_glass_stylesheet())
     QToolTip.setPalette(palette)
 
 
 def apply_dark_mode():
     palette = get_dark_palette()
     MainApplication.setPalette(palette)
+    MainApplication.setStyleSheet(get_dark_glass_stylesheet())
     QToolTip.setPalette(palette)
 
 

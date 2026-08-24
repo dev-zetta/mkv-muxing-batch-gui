@@ -119,8 +119,13 @@ class StartMuxingWorker(QObject):
         for thread in helper_threads:
             if thread.isRunning():
                 thread.wait()
-        for thread in helper_threads:
-            thread.deleteLater()
+
+        # These QThread wrappers are owned by this worker.  Queuing
+        # deleteLater() for dozens of already-stopped helper threads while the
+        # surrounding event loop is also quitting can leave deferred deletes
+        # to spill into the next queue run (and has produced rare native heap
+        # corruption on Windows).  Let normal Python/Qt ownership release the
+        # stopped wrappers with their controller instead.
 
     def next_job(self):
         if self.cancel:

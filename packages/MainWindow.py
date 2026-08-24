@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QFrame, QVBoxLayout
 
 from packages.Startup import GlobalIcons
 from packages.Startup.Options import Options, get_names_list_of_presets, save_options
-from packages.Startup.InitializeScreenResolution import width_factor, height_factor
+from packages.Startup.InitializeScreenResolution import screen_size
 from packages.Startup.Version import Version
 from packages.Tabs.GlobalSetting import GlobalSetting
 from packages.Tabs.TabsManager import TabsManager
@@ -37,11 +37,15 @@ class MainWindow(MyMainWindow):
 
     def __init__(self, args, parent=None):
         super().__init__(args=args, parent=parent)
-        self.resize(int(width_factor * 1160), int(height_factor * 635))
+        self.resize(
+            min(1440, max(1100, screen_size.width() - 120)),
+            min(900, max(680, screen_size.height() - 150)),
+        )
         self.setWindowTitle("MKV Muxing Batch GUI v" + str(Version))
         self.setWindowIcon(GlobalIcons.AppIcon)
         self.tabs = TabsManager()
         self.tabs_frame = QFrame()
+        self.tabs_frame.setObjectName("appShell")
         self.tabs_layout = QVBoxLayout()
         self.setup_tabs_layout()
         self.setCentralWidget(self.tabs_frame)
@@ -74,12 +78,13 @@ class MainWindow(MyMainWindow):
 
     def setup_tabs_layout(self):
         self.tabs_frame.setContentsMargins(0, 0, 0, 0)
-        self.tabs_layout.setContentsMargins(9, 9, 9, 12)
+        self.tabs_layout.setContentsMargins(0, 0, 0, 0)
+        self.tabs_layout.setSpacing(0)
         self.tabs_layout.addWidget(self.tabs)
         self.tabs_frame.setLayout(self.tabs_layout)
 
     def update_minimum_size(self):
-        self.setMinimumSize(self.minimumSizeHint())
+        self.setMinimumSize(1040, 640)
 
     def closeEvent(self, event: PySide6.QtGui.QCloseEvent):
         if not GlobalSetting.JOB_QUEUE_EMPTY:

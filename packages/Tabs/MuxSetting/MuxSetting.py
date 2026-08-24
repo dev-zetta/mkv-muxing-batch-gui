@@ -8,8 +8,10 @@ from shutil import copy2
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import (
-    QVBoxLayout,
+    QGridLayout,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
     QFileDialog, QCheckBox, QLineEdit, QPushButton, QSizePolicy, QWidget, )
 
 from packages.Startup.Options import Options
@@ -230,14 +232,12 @@ class MuxSettingTab(QWidget):
         self.setup_MainLayout()
         self.mux_setting_groupBox.setLayout(self.mux_setting_layout)
         self.job_queue_groupBox.setLayout(self.job_queue_layout)
-        self.setup_mux_tools_layout_first_row()
-        self.setup_mux_tools_layout_second_row()
         self.setup_mux_setting_layout()
         self.setLayout(self.MainLayout)
 
     # noinspection PyAttributeOutsideInit
     def create_widgets(self):
-        self.MainLayout = QVBoxLayout()
+        self.MainLayout = QHBoxLayout()
         self.mux_setting_groupBox = QGroupBox(self)
         self.job_queue_groupBox = QGroupBox(self)
         self.mux_setting_layout = QGridLayout()
@@ -260,20 +260,43 @@ class MuxSettingTab(QWidget):
         self.remove_old_crc_checksum_checkBox = QCheckBox()
         self.name_manipulation_button = QPushButton()
         self.control_queue_button = ControlQueueButton()
+        self.control_queue_button.setObjectName("primaryActionButton")
         self.clear_job_queue_button = QPushButton()
-        self.mux_tools_layout_first_row = QHBoxLayout()
-        self.mux_tools_layout_second_row = QHBoxLayout()
-        self.job_queue_tools_layout = QHBoxLayout()
+        self.track_rules_label = QLabel("TRACK RULES")
+        self.track_rules_label.setObjectName("sectionLabel")
+        self.behavior_label = QLabel("BEHAVIOR")
+        self.behavior_label.setObjectName("sectionLabel")
 
     def setup_mux_setting_layout(self):
-        self.mux_setting_layout.addWidget(self.destination_path_label, 0, 0)
-        self.mux_setting_layout.addWidget(self.destination_path_lineEdit, 0, 1)
-        self.mux_setting_layout.addWidget(self.destination_path_button, 0, 2)
-        self.mux_setting_layout.addWidget(self.name_manipulation_button, 0, 3)
-        self.mux_setting_layout.addWidget(self.only_keep_those_audios_checkBox, 1, 0)
-        self.mux_setting_layout.addWidget(self.only_keep_those_subtitles_checkBox, 2, 0)
-        self.mux_setting_layout.addLayout(self.mux_tools_layout_first_row, 1, 1)
-        self.mux_setting_layout.addLayout(self.mux_tools_layout_second_row, 2, 1)
+        self.mux_setting_layout.setContentsMargins(12, 16, 12, 12)
+        self.mux_setting_layout.setHorizontalSpacing(8)
+        self.mux_setting_layout.setVerticalSpacing(7)
+        self.mux_setting_layout.setColumnStretch(0, 1)
+        self.mux_setting_layout.setColumnStretch(1, 1)
+
+        self.mux_setting_layout.addWidget(self.destination_path_label, 0, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.destination_path_lineEdit, 1, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.destination_path_button, 2, 0)
+        self.mux_setting_layout.addWidget(self.name_manipulation_button, 2, 1)
+
+        self.mux_setting_layout.addWidget(self.track_rules_label, 3, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.only_keep_those_audios_checkBox, 4, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.only_keep_those_audios_multi_choose_comboBox, 5, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.make_this_audio_default_checkBox, 6, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.make_this_audio_default_comboBox, 7, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.only_keep_those_subtitles_checkBox, 8, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.only_keep_those_subtitles_multi_choose_comboBox, 9, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.make_this_subtitle_default_checkBox, 10, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.make_this_subtitle_default_comboBox, 11, 0, 1, 2)
+
+        self.mux_setting_layout.addWidget(self.behavior_label, 12, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.add_crc_checksum_checkBox, 13, 0)
+        self.mux_setting_layout.addWidget(self.remove_old_crc_checksum_checkBox, 13, 1)
+        self.mux_setting_layout.addWidget(self.abort_on_errors_checkBox, 14, 0)
+        self.mux_setting_layout.addWidget(self.keep_log_file_checkBox, 14, 1)
+        self.mux_setting_layout.setRowStretch(15, 1)
+        self.mux_setting_layout.addWidget(self.clear_job_queue_button, 16, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.control_queue_button, 17, 0, 1, 2)
 
     def setup_mux_tools_layout_first_row(self):
         self.h1 = QHBoxLayout()
@@ -299,8 +322,7 @@ class MuxSettingTab(QWidget):
         self.mux_tools_layout_second_row.addWidget(self.control_queue_button)
 
     def setup_clear_job_queue_button(self):
-        self.clear_job_queue_button.setText("Clear All")
-        self.clear_job_queue_button.setIcon(GlobalIcons.CleanIcon)
+        self.clear_job_queue_button.setText("Clear Queue")
         self.clear_job_queue_button.setDisabled(True)
 
     def setup_add_crc_checksum_checkBox(self):
@@ -314,7 +336,6 @@ class MuxSettingTab(QWidget):
             "none)")
 
     def setup_name_manipulation_button(self):
-        self.name_manipulation_button.setIcon(GlobalIcons.RenameIcon)
         self.name_manipulation_button.setToolTip(
             "Batch-edit the Matroska video title and audio/subtitle track names"
         )
@@ -327,9 +348,9 @@ class MuxSettingTab(QWidget):
             GlobalSetting.MUX_SETTING_SUBTITLE_NAME_TEMPLATE,
         ))
         if active_rules:
-            self.name_manipulation_button.setText(f"Names ({active_rules})...")
+            self.name_manipulation_button.setText(f"Metadata Names ({active_rules})")
         else:
-            self.name_manipulation_button.setText("Names...")
+            self.name_manipulation_button.setText("Metadata Names")
 
     def show_name_manipulation_dialog(self):
         dialog = NameManipulationDialog(parent=self)
@@ -349,6 +370,7 @@ class MuxSettingTab(QWidget):
 
     def setup_destination_path_button(self):
         self.destination_path_button.setIcon(GlobalIcons.SelectFolderIcon)
+        self.destination_path_button.setText(" Choose Folder")
 
     def setup_destination_path_lineEdit(self):
         self.destination_path_lineEdit.setPlaceholderText("Enter Destination Folder Path [Leave Empty For Overwrite "
@@ -356,17 +378,21 @@ class MuxSettingTab(QWidget):
         self.destination_path_lineEdit.setClearButtonEnabled(True)
 
     def setup_destination_path_label(self):
-        self.destination_path_label.setText("Videos Destination Folder :")
+        self.destination_path_label.setText("Destination")
 
     def setup_MainLayout(self):
-        self.MainLayout.addWidget(self.mux_setting_groupBox)
-        self.MainLayout.addWidget(self.job_queue_groupBox)
+        self.MainLayout.setContentsMargins(0, 0, 0, 0)
+        self.MainLayout.setSpacing(12)
+        self.MainLayout.addWidget(self.job_queue_groupBox, 5)
+        self.MainLayout.addWidget(self.mux_setting_groupBox, 2)
+        self.mux_setting_groupBox.setMinimumWidth(300)
+        self.mux_setting_groupBox.setMaximumWidth(370)
 
     def setup_job_queue_groupBox(self):
-        self.job_queue_groupBox.setTitle("Job Queue")
+        self.job_queue_groupBox.setTitle("Mux Queue")
 
     def setup_mux_setting_groupBox(self):
-        self.mux_setting_groupBox.setTitle("Mux Setting")
+        self.mux_setting_groupBox.setTitle("Output && Behavior")
 
     def paintEvent(self, event: QPaintEvent):
         self.update_widgets_size()
@@ -377,47 +403,8 @@ class MuxSettingTab(QWidget):
         super().resizeEvent(event)
 
     def update_widgets_size(self):
-        self.only_keep_those_subtitles_multi_choose_comboBox.resize(
-            self.only_keep_those_audios_multi_choose_comboBox.width(),
-            self.only_keep_those_audios_multi_choose_comboBox.height(),
-        )
-
-        self.make_this_subtitle_default_checkBox.resize(
-            self.make_this_audio_default_checkBox.width(),
-            self.make_this_audio_default_checkBox.height(),
-        )
-        self.make_this_subtitle_default_checkBox.move(
-            self.make_this_audio_default_checkBox.x(),
-            self.make_this_subtitle_default_checkBox.y(),
-        )
-
-        self.make_this_subtitle_default_comboBox.resize(
-            self.make_this_audio_default_comboBox.width(),
-            self.make_this_audio_default_comboBox.height(),
-        )
-        self.make_this_subtitle_default_comboBox.move(
-            self.make_this_audio_default_comboBox.x(),
-            self.make_this_subtitle_default_comboBox.y(),
-        )
-
-        self.remove_old_crc_checksum_checkBox.move(
-            self.add_crc_checksum_checkBox.x(),
-            self.add_crc_checksum_checkBox.y() + self.add_crc_checksum_checkBox.height() + 9,
-        )
-        self.keep_log_file_checkBox.move(
-            self.abort_on_errors_checkBox.x(),
-            self.abort_on_errors_checkBox.y() + self.abort_on_errors_checkBox.height() + 8,
-        )
-        self.control_queue_button.move(
-            self.clear_job_queue_button.x(),
-            self.clear_job_queue_button.y() + self.clear_job_queue_button.height() + 5,
-        )
-
-        self.clear_job_queue_button.resize(
-            self.control_queue_button.width(),
-            self.control_queue_button.height(),
-        )
-        self.clear_job_queue_button.setFixedWidth(self.control_queue_button.width())
+        # Layout management replaces the old manual geometry adjustments.
+        pass
 
     def open_select_destination_folder_dialog(self):
         temp_folder_path = QFileDialog.getExistingDirectory(self, caption="Choose Destination Folder",
@@ -569,7 +556,7 @@ class MuxSettingTab(QWidget):
         self.make_this_audio_default_checkBox.set_tool_tip_hint_no_check()
 
     def add_to_queue_button_clicked(self):
-        self.job_queue_groupBox.setTitle("Job Queue")
+        self.job_queue_groupBox.setTitle("Mux Queue")
         self.job_queue_layout.setup_queue()
         self.enable_muxing_setting()
         if not GlobalSetting.JOB_QUEUE_EMPTY:
@@ -632,7 +619,7 @@ class MuxSettingTab(QWidget):
 
     def clear_job_queue_button_clicked(self):
         self.job_queue_layout.clear_queue()
-        self.job_queue_groupBox.setTitle("Job Queue")
+        self.job_queue_groupBox.setTitle("Mux Queue")
         self.control_queue_button.set_state_add_to_queue()
         self.clear_job_queue_button.setDisabled(True)
         self.control_queue_button.setDisabled(False)
@@ -856,7 +843,7 @@ class MuxSettingTab(QWidget):
         self.control_queue_button.set_state_resume_multiplexing()
         self.clear_job_queue_button.setDisabled(False)
         self.control_queue_button.setDisabled(False)
-        self.job_queue_groupBox.setTitle("Job Queue — recovered, ready to resume")
+        self.job_queue_groupBox.setTitle("Mux Queue — recovered, ready to resume")
         return True
 
     def update_theme_mode_state(self):

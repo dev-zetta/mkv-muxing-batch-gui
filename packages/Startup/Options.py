@@ -23,7 +23,7 @@ class Options(QWidget):
     DefaultPresets = [SingleDefaultPresetsData()]
     CurrentPreset = SingleDefaultPresetsData()
     FavoritePresetId = 0
-    Dark_Mode = False
+    Dark_Mode = True
     Attachment_Expert_Mode_Info_Message_Show = True
     Choose_Preset_On_Startup = False
 
@@ -129,7 +129,7 @@ def read_option_file(option_file):
                                                                                                          'Arabic'])
                 Options.DefaultPresets.append(temp_default_preset)
             Options.FavoritePresetId = get_data_from_json(json_data=data, attribute="FavoritePresetId", default_value=0)
-            Options.Dark_Mode = get_data_from_json(json_data=data, attribute="Dark_Mode", default_value=False)
+            Options.Dark_Mode = get_data_from_json(json_data=data, attribute="Dark_Mode", default_value=True)
             Options.Attachment_Expert_Mode_Info_Message_Show = get_data_from_json(json_data=data,
                                                                                   attribute="Attachment_Expert_Mode_Info_Message_Show",
                                                                                   default_value=True)

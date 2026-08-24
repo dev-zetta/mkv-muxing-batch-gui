@@ -59,12 +59,15 @@ def delete_old_media_files():
             pass
 
 
-script_path = sys.argv[0]  # get path of the this file
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     # PyInstaller keeps bundled data under its private runtime directory.
     script_folder = sys._MEIPASS
 else:
-    script_folder = os.path.dirname(script_path)
+    # Resolve resources from the package location instead of sys.argv[0].
+    # Test runners and launchers replace argv[0], which previously made the
+    # application look for Resources beside pytest/python and open a fatal
+    # missing-files dialog during import.
+    script_folder = str(Path(__file__).resolve().parents[2])
 resources_folder = os.path.join(os.path.abspath(script_folder), Path('Resources'))
 FontFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Fonts'))
 IconFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Icons'))

@@ -26,4 +26,4 @@ class CompletedJobsCounter(QLabel):
         self.update_text()
 
     def update_text(self):
-        self.setText("Completed : " + str(self.number_of_completed_jobs) + "/" + str(self.number_of_jobs))
+        self.setText("Completed " + str(self.number_of_completed_jobs) + " / " + str(self.number_of_jobs))

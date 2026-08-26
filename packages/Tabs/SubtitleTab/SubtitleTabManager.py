@@ -5,11 +5,13 @@ from packages.Tabs.GlobalSetting import GlobalSetting
 from packages.Tabs.SubtitleTab.SubtitleSelection import SubtitleSelectionSetting
 from packages.Tabs.SubtitleTab.Widgets.SubtitleTabComboBox import SubtitleTabComboBox
 from packages.Tabs.SubtitleTab.Widgets.SubtitleTabDeleteButton import SubtitleTabDeleteButton
+from packages.Widgets.WarningDialog import WarningDialog
 
 
 class SubtitleTabManager(GlobalSetting):
     activation_signal = Signal(bool)
     tab_clicked_signal = Signal()
+    directory_validation_failed_signal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -114,6 +116,31 @@ class SubtitleTabManager(GlobalSetting):
         else:
             self.subtitle_tab_delete_button.setEnabled(True)
             self.subtitle_tab_comboBox.show_new_tab_option()
+
+    def validate_directories_before_queue(self):
+        stale_tabs = []
+        for list_index, subtitle_tab in enumerate(self.subtitle_tabs):
+            if subtitle_tab.check_folder_for_changes():
+                stale_tabs.append(list_index)
+
+        if not stale_tabs:
+            return True
+
+        first_stale_index = stale_tabs[0]
+        if self.subtitle_tab_comboBox.currentIndex() != first_stale_index:
+            self.subtitle_tab_comboBox.setCurrentIndex(first_stale_index)
+        self.directory_validation_failed_signal.emit()
+        warning_dialog = WarningDialog(
+            window_title="Subtitle folder changed",
+            info_message=(
+                "One or more subtitle folders changed after they were loaded.\n\n"
+                "Refresh the highlighted subtitle group and review its matching, "
+                "then add the batch to the queue again."
+            ),
+            parent=self.window(),
+        )
+        warning_dialog.execute()
+        return False
 
     def set_preset_options(self):
         for subtitle_tab in self.subtitle_tabs:

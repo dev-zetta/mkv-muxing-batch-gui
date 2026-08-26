@@ -162,6 +162,7 @@ class MuxSettingTab(QWidget):
     def __init__(self):
         super().__init__()
         self.recovery_checked = False
+        self.subtitle_directories_validator = None
         self.create_widgets()
         self.setup_widgets()
         self.connect_signals()
@@ -556,6 +557,8 @@ class MuxSettingTab(QWidget):
         self.make_this_audio_default_checkBox.set_tool_tip_hint_no_check()
 
     def add_to_queue_button_clicked(self):
+        if callable(self.subtitle_directories_validator) and not self.subtitle_directories_validator():
+            return
         self.job_queue_groupBox.setTitle("Mux Queue")
         self.job_queue_layout.setup_queue()
         self.enable_muxing_setting()

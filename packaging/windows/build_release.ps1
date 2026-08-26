@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "2.6.1",
+    [string]$Version = "2.7.0",
     [string]$Python = ".\.venv\Scripts\python.exe"
 )
 

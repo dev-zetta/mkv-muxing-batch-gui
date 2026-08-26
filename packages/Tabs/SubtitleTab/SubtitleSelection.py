@@ -1,6 +1,7 @@
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QFileSystemWatcher, QTimer, Signal
 from PySide6.QtWidgets import (
     QGroupBox,
+    QLabel,
 )
 
 from packages.Startup.Options import Options
@@ -47,6 +48,10 @@ class SubtitleSelectionSetting(QGroupBox):
         self.subtitle_source_button = SubtitleSourceButton()
         self.subtitle_clear_button = SubtitleClearButton()
         self.subtitle_refresh_files_button = RefreshFilesButton()
+        self.subtitle_directory_status_label = QLabel()
+        self.subtitle_directory_status_label.setObjectName("subtitleDirectoryStatus")
+        self.subtitle_directory_status_label.setWordWrap(True)
+        self.subtitle_directory_status_label.hide()
         self.subtitle_extensions_comboBox = SubtitleExtensionsCheckableComboBox()
         self.subtitle_language_comboBox = SubtitleLanguageComboBox(self.tab_index)
         self.subtitle_track_name_lineEdit = SubtitleTrackNameLineEdit(self.tab_index)
@@ -61,7 +66,8 @@ class SubtitleSelectionSetting(QGroupBox):
         self.main_layout = QGridLayout()
         self.setObjectName("main_groupBox")
         self.setStyleSheet(
-            "QGroupBox#main_groupBox {subcontrol-origin: margin;left: 3px;padding: 3px 0px 3px 0px;}")
+            "QGroupBox#main_groupBox {subcontrol-origin: margin;left: 3px;padding: 3px 0px 3px 0px;}"
+            "QLabel#subtitleDirectoryStatus {color: #d99400; font-weight: 600; padding: 4px 2px;}")
         self.subtitle_match_groupBox = QGroupBox("Subtitle Matching")
         self.subtitle_match_groupBox.setLayout(self.subtitle_match_layout)
 
@@ -83,6 +89,8 @@ class SubtitleSelectionSetting(QGroupBox):
         self.subtitle_match_layout.subtitle_table.drop_folder_and_files_signal.connect(
             self.update_files_with_drag_and_drop)
         self.subtitle_clear_button.clear_files_signal.connect(self.clear_files)
+        self.subtitle_directory_watcher.directoryChanged.connect(self.schedule_directory_check)
+        self.subtitle_directory_check_timer.timeout.connect(self.check_folder_for_changes)
 
     def create_global_properties(self):
         GlobalSetting.SUBTITLE_FILES_LIST[self.tab_index] = []
@@ -96,6 +104,10 @@ class SubtitleSelectionSetting(QGroupBox):
         GlobalSetting.SUBTITLE_LANGUAGE[self.tab_index] = Options.CurrentPreset.Default_Subtitle_Language
 
     def create_properties(self):
+        if hasattr(self, "subtitle_directory_watcher"):
+            self.stop_watching_subtitle_folder()
+        if hasattr(self, "subtitle_directory_status_label"):
+            self.clear_directory_stale_state()
         self.folder_path = ""
         self.drag_and_dropped_text = "[Drag & Drop Files]"
         self.files_names_list = []
@@ -103,6 +115,12 @@ class SubtitleSelectionSetting(QGroupBox):
         self.files_names_absolute_list_with_dropped_files = []
         self.current_subtitle_extensions = Options.CurrentPreset.Default_Subtitle_Extensions
         self.is_drag_and_drop = False
+        self.subtitle_directory_is_stale = False
+        if not hasattr(self, "subtitle_directory_watcher"):
+            self.subtitle_directory_watcher = QFileSystemWatcher(self)
+            self.subtitle_directory_check_timer = QTimer(self)
+            self.subtitle_directory_check_timer.setSingleShot(True)
+            self.subtitle_directory_check_timer.setInterval(900)
 
     def setup_layouts(self):
         self.setup_subtitle_check_default_forced_layout()
@@ -136,18 +154,24 @@ class SubtitleSelectionSetting(QGroupBox):
         self.main_layout.addWidget(self.subtitle_source_button, 0, 4)
         self.main_layout.addWidget(self.subtitle_extension_label, 1, 0)
         self.main_layout.addLayout(self.subtitle_options_layout, 1, 1, 1, 4)
-        self.main_layout.addWidget(self.subtitle_match_groupBox, 2, 0, 1, -1)
+        self.main_layout.addWidget(self.subtitle_directory_status_label, 2, 0, 1, -1)
+        self.main_layout.addWidget(self.subtitle_match_groupBox, 3, 0, 1, -1)
 
     def setup_subtitle_main_groupBox(self):
         self.setLayout(self.main_layout)
 
     def update_folder_path(self, new_path: str):
         if new_path != "":
+            previous_path = self.folder_path
             self.subtitle_source_lineEdit.set_text_safe_change(new_path)
-            self.update_files_lists(new_path)
+            if not self.update_files_lists(new_path):
+                self.subtitle_source_lineEdit.set_text_safe_change(previous_path)
+                return
             self.show_subtitle_files_list()
             self.subtitle_refresh_files_button.update_current_path(new_path=new_path)
             self.subtitle_refresh_files_button.setEnabled(True)
+            self.watch_subtitle_folder(new_path)
+            self.clear_directory_stale_state()
         else:
             if self.is_drag_and_drop:
                 self.subtitle_source_lineEdit.set_text_safe_change(self.drag_and_dropped_text)
@@ -183,22 +207,27 @@ class SubtitleSelectionSetting(QGroupBox):
                 self.subtitle_source_lineEdit.stop_check_path = False
             else:
                 self.subtitle_source_lineEdit.set_text_safe_change("")
-            return
+            return True
         try:
+            discovered_files = self.get_files_list(folder_path)
+            discovered_absolute_paths = get_files_names_absolute_list(discovered_files, folder_path)
             self.is_drag_and_drop = False
             self.folder_path = folder_path
-            self.files_names_list = self.get_files_list(self.folder_path)
-            self.files_names_absolute_list = get_files_names_absolute_list(self.files_names_list, self.folder_path)
+            self.files_names_list = discovered_files
+            self.files_names_absolute_list = discovered_absolute_paths
             self.files_names_absolute_list_with_dropped_files = self.files_names_absolute_list.copy()
+            return True
         except Exception as e:
             invalid_path_dialog = InvalidPathDialog(parent=self)
             invalid_path_dialog.execute()
+            return False
 
     def check_extension_changes(self, new_extensions):
         if self.current_subtitle_extensions != new_extensions:
             self.current_subtitle_extensions = new_extensions
-            self.update_files_lists(self.folder_path)
-            self.show_subtitle_files_list()
+            if self.update_files_lists(self.folder_path):
+                self.show_subtitle_files_list()
+                self.clear_directory_stale_state()
 
     def get_files_list(self, folder_path):
         temp_files_names = sort_names_like_windows(names_list=os.listdir(folder_path))
@@ -238,6 +267,7 @@ class SubtitleSelectionSetting(QGroupBox):
         self.is_there_old_files_signal.emit(len(self.files_names_list) > 0)
 
     def clear_files(self):
+        self.stop_watching_subtitle_folder()
         self.folder_path = ""
         self.files_names_list = []
         self.files_names_absolute_list = []
@@ -246,7 +276,81 @@ class SubtitleSelectionSetting(QGroupBox):
         self.subtitle_refresh_files_button.setEnabled(True)
         self.subtitle_source_lineEdit.set_text_safe_change("")
         self.is_drag_and_drop = False
+        self.clear_directory_stale_state()
         self.show_subtitle_files_list()
+
+    def watch_subtitle_folder(self, folder_path):
+        self.stop_watching_subtitle_folder()
+        if folder_path and os.path.isdir(folder_path):
+            self.subtitle_directory_watcher.addPath(folder_path)
+
+    def stop_watching_subtitle_folder(self):
+        watched_directories = self.subtitle_directory_watcher.directories()
+        if watched_directories:
+            self.subtitle_directory_watcher.removePaths(watched_directories)
+        self.subtitle_directory_check_timer.stop()
+
+    def schedule_directory_check(self, _changed_path=""):
+        if self.folder_path and not self.is_drag_and_drop:
+            self.subtitle_directory_check_timer.start()
+
+    @staticmethod
+    def _file_name_keys(file_names):
+        return {os.path.normcase(file_name) for file_name in file_names}
+
+    def check_folder_for_changes(self):
+        """Detect directory membership changes without disturbing manual matching."""
+        if not self.folder_path or self.is_drag_and_drop:
+            return False
+
+        if not os.path.isdir(self.folder_path):
+            self.mark_directory_stale(0, len(self.files_names_list), folder_missing=True)
+            return True
+
+        try:
+            discovered_files = self.get_files_list(self.folder_path)
+        except OSError:
+            self.mark_directory_stale(0, len(self.files_names_list), folder_missing=True)
+            return True
+
+        current_keys = self._file_name_keys(self.files_names_list)
+        discovered_keys = self._file_name_keys(discovered_files)
+        added_count = len(discovered_keys - current_keys)
+        removed_count = len(current_keys - discovered_keys)
+        if added_count or removed_count:
+            self.mark_directory_stale(added_count, removed_count)
+            return True
+
+        self.clear_directory_stale_state()
+        if self.folder_path not in self.subtitle_directory_watcher.directories():
+            self.subtitle_directory_watcher.addPath(self.folder_path)
+        return False
+
+    def mark_directory_stale(self, added_count, removed_count, folder_missing=False):
+        self.subtitle_directory_is_stale = True
+        if folder_missing:
+            message = "Subtitle folder is unavailable. Restore it or choose another folder before adding to the queue."
+        else:
+            changes = []
+            if added_count:
+                changes.append(f"{added_count} added")
+            if removed_count:
+                changes.append(f"{removed_count} removed")
+            message = (
+                f"Subtitle folder changed ({', '.join(changes)}). "
+                "Refresh the files and review the matching before adding to the queue."
+            )
+        self.subtitle_directory_status_label.setText("⚠  " + message)
+        self.subtitle_directory_status_label.setToolTip(message)
+        self.subtitle_directory_status_label.show()
+        self.subtitle_refresh_files_button.setToolTip(message)
+
+    def clear_directory_stale_state(self):
+        self.subtitle_directory_is_stale = False
+        self.subtitle_directory_status_label.clear()
+        self.subtitle_directory_status_label.hide()
+        if not self.is_drag_and_drop:
+            self.subtitle_refresh_files_button.setToolTip("Refresh Files")
 
     def change_global_subtitle_list(self):
         GlobalSetting.SUBTITLE_TAB_ENABLED[self.tab_index] = len(self.files_names_list) > 0
@@ -260,6 +364,7 @@ class SubtitleSelectionSetting(QGroupBox):
         if on:
             self.show_video_files_list()
         else:
+            self.stop_watching_subtitle_folder()
             self.subtitle_source_lineEdit.set_text_safe_change("")
             self.subtitle_match_layout.clear_tables()
             self.folder_path = ""
@@ -271,6 +376,7 @@ class SubtitleSelectionSetting(QGroupBox):
             self.subtitle_set_forced_checkBox.setChecked(False)
             self.subtitle_set_default_checkBox.setChecked(False)
             self.is_drag_and_drop = False
+            self.clear_directory_stale_state()
             self.subtitle_source_lineEdit.set_is_drag_and_drop(False)
             self.subtitle_delay_spin.setValue(0)
             GlobalSetting.SUBTITLE_FILES_LIST[self.tab_index] = []
@@ -300,6 +406,7 @@ class SubtitleSelectionSetting(QGroupBox):
             GlobalSetting.LAST_DIRECTORY_PATH = self.folder_path
 
     def tab_clicked(self):
+        self.check_folder_for_changes()
         self.show_subtitle_files_list()
         self.show_video_files_list()
         if not GlobalSetting.JOB_QUEUE_EMPTY:
@@ -359,6 +466,8 @@ class SubtitleSelectionSetting(QGroupBox):
         self.update_other_classes_variables()
 
     def update_files_with_drag_and_drop(self, paths_list):
+        self.stop_watching_subtitle_folder()
+        self.clear_directory_stale_state()
         duplicate_flag = False
         not_duplicate_files_absolute_path_list = []
         not_duplicate_files_list = []
@@ -434,4 +543,5 @@ class SubtitleSelectionSetting(QGroupBox):
         else:
             self.setPalette(get_light_palette())
         self.setStyleSheet(
-            "QGroupBox#main_groupBox {subcontrol-origin: margin;left: 3px;padding: 3px 0px 3px 0px;}")
+            "QGroupBox#main_groupBox {subcontrol-origin: margin;left: 3px;padding: 3px 0px 3px 0px;}"
+            "QLabel#subtitleDirectoryStatus {color: #d99400; font-weight: 600; padding: 4px 2px;}")

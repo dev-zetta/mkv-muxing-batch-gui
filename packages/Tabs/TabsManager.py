@@ -56,6 +56,7 @@ class TabsManager(QWidget):
         self.attachment_tab = AttachmentSelectionSetting()
         self.chapter_tab = ChapterSelectionSetting()
         self.mux_setting_tab = MuxSettingTab()
+        self.mux_setting_tab.subtitle_directories_validator = self.subtitle_tab.validate_directories_before_queue
 
         self.tabs_ids = {
             "Video": 0,
@@ -246,6 +247,9 @@ class TabsManager(QWidget):
         self.mux_setting_tab.update_task_bar_clear_signal.connect(self.update_task_bar_clear_signal.emit)
         self.navigation.currentRowChanged.connect(self.set_current_page)
         self.theme_button.dark_mode_updated_signal.connect(self.update_theme_mode_state)
+        self.subtitle_tab.directory_validation_failed_signal.connect(
+            lambda: self.setCurrentIndex(self.tabs_ids["Subtitle"])
+        )
 
     def set_current_page(self, index):
         if index < 0 or index >= self.page_stack.count():

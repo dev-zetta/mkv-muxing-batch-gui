@@ -2,9 +2,9 @@ import traceback
 import zlib
 from os.path import getsize
 
-from PySide6.QtCore import Signal, QObject, QThread
+from PySide6.QtCore import QObject, QThread, Signal
 
-from packages.Tabs.GlobalSetting import write_to_log_file, GlobalSetting
+from packages.Tabs.GlobalSetting import GlobalSetting, write_to_log_file
 
 
 def get_file_name_with_mkv_extension(file_name):
@@ -29,7 +29,7 @@ class CalculateCRCProcessWorker(QObject):
         super().__init__()
         self.file_name = file_name
         self.progress = 0
-        self.chunk_size = 65536
+        self.chunk_size = 1024 * 1024
         self.wait = True
         self.stop = False
 
@@ -45,12 +45,22 @@ class CalculateCRCProcessWorker(QObject):
                     with open(file_name, "rb") as f:
                         checksum = 0
                         current_read = 0
-                        current_percent = 0
+                        last_reported_percent = -1
                         while chunk := f.read(self.chunk_size):
-                            current_read += self.chunk_size
+                            if self.stop:
+                                break
+                            current_read += len(chunk)
                             current_percent = int(min(100 * current_read / file_size, 100))
-                            self.crc_progress_signal.emit(current_percent)
+                            # Reading a large video in small chunks used to queue
+                            # one GUI event per chunk.  The GUI only displays an
+                            # integer percentage, so duplicate events could leave
+                            # its event loop permanently behind after a long batch.
+                            if current_percent != last_reported_percent:
+                                self.crc_progress_signal.emit(current_percent)
+                                last_reported_percent = current_percent
                             checksum = zlib.crc32(chunk, checksum)
+                        if self.stop:
+                            break
                         crc_string = format(checksum & 0xFFFFFFFF, '08x').upper()
                         self.crc_result_signal.emit(crc_string)
                     self.wait = True

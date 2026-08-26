@@ -7,6 +7,9 @@ from PySide6.QtCore import QThread, QTimer
 from PySide6.QtWidgets import QApplication
 
 from packages.Startup import GlobalFiles
+from packages.Tabs.MuxSetting.Widgets.CalculateCRCProcessWorker import (
+    CalculateCRCProcessWorker,
+)
 from packages.Tabs.MuxSetting.Widgets.ReadFromMkvmergeLogWorker import (
     ReadFromMkvmergeLogWorker,
     next_line,
@@ -98,6 +101,31 @@ class MuxingWorkerLifecycleTests(unittest.TestCase):
                 reader_thread.quit()
                 reader_thread.wait()
             os.unlink(log_file.name)
+
+    def test_crc_worker_coalesces_progress_updates_for_large_files(self):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mkv") as file_handle:
+            file_handle.write(b"x" * 10_000)
+
+        worker = CalculateCRCProcessWorker(file_handle.name)
+        worker.chunk_size = 1
+        worker.wait = False
+        progress_updates = []
+        results = []
+        worker.crc_progress_signal.connect(progress_updates.append)
+
+        def finish(crc):
+            results.append(crc)
+            worker.stop = True
+
+        worker.crc_result_signal.connect(finish)
+        try:
+            worker.run()
+            self.assertTrue(results)
+            self.assertLessEqual(len(progress_updates), 101)
+            self.assertEqual(progress_updates, sorted(set(progress_updates)))
+            self.assertEqual(progress_updates[-1], 100)
+        finally:
+            os.unlink(file_handle.name)
 
 
 if __name__ == "__main__":

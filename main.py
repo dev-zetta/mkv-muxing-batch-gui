@@ -8,10 +8,13 @@ import psutil
 from packages.Startup.MainApplication import MainApplication
 from packages.Startup import GlobalFiles
 from packages.Startup import GlobalIcons
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QFont, QFontDatabase
+from packages.Startup.UpdateChecker import MKVTOOLNIX_DOWNLOAD_URL, UpdateChecker
+from packages.Startup.Version import Version
+from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtGui import QDesktopServices, QFont, QFontDatabase
 from PySide6.QtWidgets import QApplication
 from packages.Widgets.MissingFilesMessage import MissingFilesMessage
+from packages.Widgets.UpdateAvailableMessage import show_update_report
 from packages.Widgets.WarningDialog import WarningDialog
 
 if sys.platform == "win32":
@@ -52,11 +55,40 @@ def create_window():
 
 
 def required_tools_available():
-    error_message = GlobalFiles.get_missing_tools_error()
-    if not error_message:
-        return True
-    MissingFilesMessage(error_message=error_message).execute()
-    return False
+    return not GlobalFiles.get_missing_tools_error()
+
+
+def show_missing_tools_prompt():
+    while not required_tools_available():
+        action = MissingFilesMessage(
+            error_message=GlobalFiles.get_missing_tools_error(),
+            parent=window,
+        ).execute()
+        if action == "retry":
+            GlobalFiles.refresh_tools()
+            continue
+        if action == "download":
+            QDesktopServices.openUrl(QUrl(MKVTOOLNIX_DOWNLOAD_URL))
+        break
+
+
+def start_update_check():
+    # Keep the checker on the window so it remains alive until the asynchronous
+    # check has completed.
+    window.update_checker = UpdateChecker(parent=window)
+    window.update_checker.finished.connect(
+        lambda report: show_update_report(report, parent=window, always_show=False)
+    )
+    window.update_checker.check(
+        Version,
+        GlobalFiles.MKVMERGE_VERSION,
+        GlobalFiles.MKVPROPEDIT_VERSION,
+    )
+
+
+def run_startup_checks():
+    show_missing_tools_prompt()
+    start_update_check()
 
 
 def run_application():
@@ -94,10 +126,10 @@ def setup_logger():
 if __name__ == "__main__":
     setup_logger()
     create_application()
-    if not required_tools_available():
-        sys.exit(1)
     setup_application_font()
     create_window()
     if "--smoke-test" in sys.argv:
         QTimer.singleShot(0, app.quit)
+    else:
+        QTimer.singleShot(0, run_startup_checks)
     run_application()

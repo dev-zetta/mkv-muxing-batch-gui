@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "2.7.2",
+    [string]$Version = "2.8.0",
     [string]$Python = ".\.venv\Scripts\python.exe"
 )
 
@@ -14,6 +14,10 @@ $applicationDirectory = Join-Path $distDirectory "MKV Muxing Batch GUI"
 $portableFile = Join-Path $releaseDirectory "MKV.Muxing.Batch.GUI.x64.v$Version.Qt6.Windows.Portable.zip"
 $installerFile = Join-Path $releaseDirectory "MKV.Muxing.Batch.GUI.x64.v$Version.Qt6.Windows.Installer.exe"
 $checksumsFile = Join-Path $releaseDirectory "SHA256SUMS.txt"
+$dependencyCacheDirectory = Join-Path $projectRoot ".dependency-cache"
+$mkvToolNixDirectory = Join-Path $buildDirectory "dependencies\mkvtoolnix-windows-x64"
+$dependencyManifestFile = Join-Path $projectRoot "packaging\dependencies.json"
+$dependencyFetcher = Join-Path $projectRoot "scripts\fetch_mkvtoolnix.py"
 $sourceVersion = [regex]::Match(
     (Get-Content -LiteralPath (Join-Path $projectRoot "packages\Startup\Version.py") -Raw),
     'Version\s*=\s*"([^"]+)"'
@@ -34,7 +38,26 @@ foreach ($target in @($buildDirectory, $distDirectory, $releaseDirectory)) {
 New-Item -ItemType Directory -Path $releaseDirectory | Out-Null
 
 Push-Location $projectRoot
+$previousMkvToolNixBundle = $env:MKVTOOLNIX_BUNDLE_DIR
 try {
+    & $Python $dependencyFetcher `
+        --destination $mkvToolNixDirectory `
+        --cache-dir $dependencyCacheDirectory
+    if ($LASTEXITCODE -ne 0) {
+        throw "MKVToolNix download or verification failed with exit code $LASTEXITCODE"
+    }
+
+    $dependencyManifest = Get-Content -LiteralPath $dependencyManifestFile -Raw | ConvertFrom-Json
+    $expectedMkvToolNixVersion = $dependencyManifest.mkvtoolnix_windows_x64.version
+    foreach ($toolName in @("mkvmerge.exe", "mkvpropedit.exe")) {
+        $toolPath = Join-Path $mkvToolNixDirectory $toolName
+        $toolVersion = (& $toolPath -V | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or $toolVersion -notmatch [regex]::Escape("v$expectedMkvToolNixVersion")) {
+            throw "$toolName did not report expected MKVToolNix version $expectedMkvToolNixVersion"
+        }
+    }
+
+    $env:MKVTOOLNIX_BUNDLE_DIR = $mkvToolNixDirectory
     & $Python -m PyInstaller --noconfirm --clean --workpath $buildDirectory --distpath $distDirectory $specFile
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller failed with exit code $LASTEXITCODE"
@@ -62,6 +85,12 @@ try {
     [System.IO.File]::WriteAllLines($checksumsFile, $checksumLines)
 }
 finally {
+    if ($null -eq $previousMkvToolNixBundle) {
+        Remove-Item Env:MKVTOOLNIX_BUNDLE_DIR -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:MKVTOOLNIX_BUNDLE_DIR = $previousMkvToolNixBundle
+    }
     Pop-Location
 }
 

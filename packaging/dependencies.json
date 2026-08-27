@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "mkvtoolnix_windows_x64": {
+    "version": "101.0",
+    "archive_url": "https://mkvtoolnix.download/windows/releases/101.0/mkvtoolnix-64-bit-101.0.zip",
+    "checksum_url": "https://mkvtoolnix.download/windows/releases/101.0/mkvtoolnix-64-bit-101.0.zip.sha256",
+    "sha256": "59a807b45b34ac524dfdef61edcf0642ee9bd6b08c130cfc078532c362569abc",
+    "archive_root": "mkvtoolnix",
+    "files": {
+      "mkvmerge.exe": "mkvmerge.exe",
+      "mkvpropedit.exe": "mkvpropedit.exe",
+      "doc/COPYING.txt": "LICENSE.MKVToolNix.txt",
+      "doc/README.txt": "README.MKVToolNix.txt"
+    }
+  }
+}

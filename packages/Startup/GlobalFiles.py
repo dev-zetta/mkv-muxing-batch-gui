@@ -74,7 +74,6 @@ else:
 resources_folder = os.path.join(os.path.abspath(script_folder), Path('Resources'))
 FontFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Fonts'))
 IconFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Icons'))
-DLLFolderPath = os.path.join(os.path.abspath(resources_folder), Path('DLL'))
 GlobalToolsFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Tools'))
 ToolsFolderPath = os.path.join(os.path.abspath(GlobalToolsFolderPath), Path('Windowsx64'))
 LanguagesFolderPath = os.path.join(os.path.abspath(resources_folder), Path('Languages'))
@@ -178,11 +177,7 @@ def resolve_program(program_name):
 
 
 def get_missing_tools_error():
-    missing_tools = []
-    if "not found" in MKVMERGE_VERSION:
-        missing_tools.append("mkvmerge")
-    if "not found" in MKVPROPEDIT_VERSION:
-        missing_tools.append("mkvpropedit")
+    missing_tools = get_missing_tools()
     if not missing_tools:
         return ""
     return (
@@ -190,6 +185,25 @@ def get_missing_tools_error():
         + ", ".join(missing_tools)
         + ". Install MKVToolNix, add it to PATH, or set MKVTOOLNIX_PATH."
     )
+
+
+def get_missing_tools():
+    missing_tools = []
+    if "not found" in MKVMERGE_VERSION:
+        missing_tools.append("mkvmerge")
+    if "not found" in MKVPROPEDIT_VERSION:
+        missing_tools.append("mkvpropedit")
+    return missing_tools
+
+
+def refresh_tools():
+    """Re-run tool discovery after MKVToolNix is installed or reconfigured."""
+    global MKVMERGE_PATH, MKVMERGE_VERSION
+    global MKVPROPEDIT_PATH, MKVPROPEDIT_VERSION, ENVIRONMENT
+    MKVMERGE_PATH, MKVMERGE_VERSION = resolve_program("mkvmerge")
+    MKVPROPEDIT_PATH, MKVPROPEDIT_VERSION = resolve_program("mkvpropedit")
+    ENVIRONMENT = get_tool_environment(MKVMERGE_PATH)
+    return not get_missing_tools()
 
 
 def update_enviro_if_not_windows():
@@ -265,7 +279,6 @@ try:
     mkvmergeJsonInfoFilePath = os.path.join(os.path.abspath(AppDataFolderPath), "MkvmergeInfo.json")
     SettingJsonInfoFilePath = os.path.join(os.path.abspath(AppDataFolderPath), "setting.json")
     QueueSessionFilePath = os.path.join(os.path.abspath(AppDataFolderPath), "queue_session.json")
-    TaskBarLibFilePath = os.path.join(os.path.abspath(DLLFolderPath), "TaskbarLib.tlb")
     MKVMERGE_PATH, MKVMERGE_VERSION = resolve_program("mkvmerge")
     MKVPROPEDIT_PATH, MKVPROPEDIT_VERSION = resolve_program("mkvpropedit")
     ENVIRONMENT = get_tool_environment(MKVMERGE_PATH)

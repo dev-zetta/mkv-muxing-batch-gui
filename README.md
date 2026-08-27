@@ -10,6 +10,7 @@ A focused desktop workspace for muxing entire video collections with precise tra
 
 [![Latest release](https://img.shields.io/github/v/release/dev-zetta/mkv-muxing-batch-gui?display_name=tag&sort=semver&style=flat-square&color=7657b4)](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/dev-zetta/mkv-muxing-batch-gui/total?style=flat-square&color=7657b4)](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases)
+[![Build and release](https://github.com/dev-zetta/mkv-muxing-batch-gui/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/dev-zetta/mkv-muxing-batch-gui/actions/workflows/build-and-release.yml)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2f7dd1?style=flat-square&logo=windows11)](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/latest)
 [![Python](https://img.shields.io/badge/Python-3.14-3776ab?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/dev-zetta/mkv-muxing-batch-gui?style=flat-square&color=3ca374)](LICENSE)
@@ -105,6 +106,18 @@ system MKVToolNix package. Published binary assets include a matching
 
 The application uses [MKVToolNix](https://mkvtoolnix.download/) for Matroska processing.
 
+If MKVToolNix is missing, the application still opens and offers to take you
+to the official download page. You can install it, choose **Check Again**, or
+continue browsing the application without muxing.
+
+On startup, a background check compares the installed MKVToolNix version with
+the official release feed and the application version with this repository's
+latest stable GitHub release. Only available updates are announced; offline
+startup remains silent and fully usable. A manual **Check for Updates** action
+is available in **Options → About**. These runtime checks contact
+`mkvtoolnix.download` and `api.github.com` but never download or install
+anything automatically.
+
 ## Before muxing
 
 > [!WARNING]
@@ -123,6 +136,8 @@ A few advanced combinations deserve extra care:
 ### Windows
 
 The maintained configuration uses Python 3.14 and PySide6 6.11.2.
+Install MKVToolNix from its official download page before running from source;
+the app will open and offer that link if the tools are missing.
 
 ```powershell
 git clone https://github.com/dev-zetta/mkv-muxing-batch-gui.git
@@ -171,6 +186,15 @@ Build the Windows installer and portable archive after installing [Inno Setup 6]
 ```
 
 Release artifacts and their checksums are written to the `release` directory.
+The build downloads the pinned MKVToolNix x64 ZIP from the official publisher,
+requires its live SHA-256 sidecar to match `packaging/dependencies.json`, and
+stages only the required tools and notices under `build`. The verified archive
+is cached in the ignored `.dependency-cache` directory for repeatable rebuilds.
+
+Pull requests and manual workflow runs build and validate both supported
+platforms. Pushing a stable version tag matching `packages/Startup/Version.py`
+also publishes the installer, portable ZIP, Linux archive, and combined
+`SHA256SUMS.txt` through GitHub Releases.
 
 Build the Linux one-folder application with the same pinned environment:
 
@@ -187,21 +211,29 @@ Use `--smoke-test` to initialize the complete application and close it
 immediately, which is useful for validating a packaged artifact in CI.
 
 The complete original-upstream issue snapshot and severity triage are kept in
-[docs/UPSTREAM_ISSUES.md](docs/UPSTREAM_ISSUES.md).
+[docs/UPSTREAM_ISSUES.md](docs/UPSTREAM_ISSUES.md). The repository payload
+inventory and dependency provenance policy are in
+[docs/BINARY_AUDIT.md](docs/BINARY_AUDIT.md).
 
 ### Updating MKVToolNix
 
-The Windows package includes `mkvmerge` and `mkvpropedit`. Advanced users can replace them inside the application’s `Resources\Tools\Windows64` directory. Keep both executables from the same MKVToolNix release and reinstall the application if an update causes incompatibilities.
+No MKVToolNix executables are stored in this repository. Windows release builds
+package `mkvmerge` and `mkvpropedit` obtained by the verified dependency fetcher.
+To update the packaged version, update the official archive URLs, version, and
+SHA-256 together in `packaging/dependencies.json`, then run the release build;
+it will reject disagreement with the publisher's checksum sidecar.
 
 Tool discovery checks `MKVTOOLNIX_PATH`/`MKVTOOLNIX_DIR`, the system `PATH`,
 the normal Windows installation directory, and finally a working bundled copy.
-On Linux, use the system MKVToolNix package.
+On Linux, use the system MKVToolNix package. Advanced Windows users should
+prefer a normal MKVToolNix installation or one of the environment overrides
+instead of modifying a packaged application in place.
 
 ## Roots and acknowledgements
 
 MKV Muxing Batch began as a fork of [yaser01/mkv-muxing-batch-gui](https://github.com/yaser01/mkv-muxing-batch-gui). The foundation, early interface, and breadth of muxing controls came from that project and its contributors.
 
-The application relies on [MKVToolNix](https://gitlab.com/mbunkus/mkvtoolnix), whose work makes dependable Matroska tooling possible.
+The application relies on [MKVToolNix](https://codeberg.org/mbunkus/mkvtoolnix), whose work makes dependable Matroska tooling possible.
 
 Thank you to everyone who reports a broken edge case, tests a large queue, or suggests a way to make repetitive media work less repetitive.
 

@@ -19,9 +19,8 @@ datas = []
 for directory_name in ("Fonts", "Icons", "Languages"):
     datas.extend(collect_files(resources_root / directory_name, f"Resources/{directory_name}"))
 
-# Linux builds intentionally use a current system MKVToolNix. The binaries
-# historically committed under Resources/Tools/Linux require obsolete shared
-# libraries and do not produce a portable application on current distributions.
+# Linux builds intentionally use a current system MKVToolNix. The repository
+# stores no MKVToolNix executables or shared libraries.
 a = Analysis(
     [str(project_root / "main.py")],
     pathex=[str(project_root)],

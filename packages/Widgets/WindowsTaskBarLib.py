@@ -1,12 +1,10 @@
-# -*- coding: mbcs -*-
+# -*- coding: utf-8 -*-
 
 from ctypes import *
-from comtypes import CoClass, COMMETHOD, GUID, IUnknown
+from comtypes import COMMETHOD, GUID, IUnknown
 from ctypes import HRESULT
 from ctypes.wintypes import BOOL, HICON, HWND, tagRECT
-from packages.Startup.GlobalFiles import TaskBarLibFilePath
 _lcid = 0  # change this if required
-typelib_path = TaskBarLibFilePath
 WSTRING = c_wchar_p
 
 
@@ -259,21 +257,6 @@ ITaskbarList3._methods_ = [
 #
 
 
-class Library(object):
-    name = 'TaskbarLib'
-    _reg_typelib_ = ('{683BF642-E9CA-4124-BE43-67065B2FA653}', 1, 0)
-
-
-class TaskbarList(CoClass):
-    _reg_clsid_ = GUID('{56FDF344-FD6D-11D0-958A-006097C9A090}')
-    _idlflags_ = []
-    _typelib_path_ = typelib_path
-    _reg_typelib_ = ('{683BF642-E9CA-4124-BE43-67065B2FA653}', 1, 0)
-
-
-TaskbarList._com_interfaces_ = [ITaskbarList3]
-
-
 class _RemotableHandle(Structure):
     pass
 
@@ -329,7 +312,7 @@ tagTHUMBBUTTON._fields_ = [
 __all__ = [
     'ITaskbarList', '__MIDL___MIDL_itf_taskbarlib_0006_0001_0001',
     '_RemotableHandle', 'TBPF_PAUSED', 'TBPFLAG', 'tagTHUMBBUTTON',
-    'TaskbarList', 'TBPF_NOPROGRESS', 'ITaskbarList3',
+    'TBPF_NOPROGRESS', 'ITaskbarList3',
     'TBPF_INDETERMINATE', 'TBATF_USEMDITHUMBNAIL', 'TBPF_ERROR',
     'TBPF_NORMAL', 'ITaskbarList2', 'TBATF_USEMDILIVEPREVIEW',
     'TBATFLAG', '__MIDL_IWinTypes_0009'

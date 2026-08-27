@@ -4,14 +4,16 @@ from PySide6.QtGui import QPixmap, QFont
 from PySide6.QtWidgets import QLabel, \
      QPushButton, QHBoxLayout, QVBoxLayout
 
-from packages.Startup.GlobalFiles import AppIconPath, MKVMERGE_VERSION, MKVPROPEDIT_VERSION
+from packages.Startup import GlobalFiles
 from packages.Startup.GlobalIcons import AboutIcon
 from packages.Startup.PreDefined import GitHubRepoUrlTag, GPLV2UrlTag, GitHubIssuesUrlTag
+from packages.Startup.UpdateChecker import UpdateChecker
 from packages.Startup.Version import Version
 from packages.Tabs.SettingTab.Widgets.DonateButton import DonateButton
 from packages.Tabs.SettingTab.Widgets.TelegramLabel import TelegramLabel
 from packages.Tabs.SettingTab.Widgets.TwitterLabel import TwitterLabel
 from packages.Widgets.MyDialog import MyDialog
+from packages.Widgets.UpdateAvailableMessage import show_update_report
 
 
 class AboutDialog(MyDialog):
@@ -20,11 +22,11 @@ class AboutDialog(MyDialog):
         self.setWindowTitle("About MKV Muxing Batch GUI")
         self.setWindowIcon(AboutIcon)
         self.app_icon_label = QLabel()
-        self.app_icon_label.setPixmap(QPixmap(AppIconPath).scaledToHeight(175))
+        self.app_icon_label.setPixmap(QPixmap(GlobalFiles.AppIconPath).scaledToHeight(175))
         self.app_name_label = QLabel("MKV Muxing Batch GUI")
         self.app_current_version = QLabel("Version: " + str(Version))
-        self.app_mkvmerge_current_version = QLabel(str(MKVMERGE_VERSION))
-        self.app_mkvpropedit_current_version = QLabel(str(MKVPROPEDIT_VERSION))
+        self.app_mkvmerge_current_version = QLabel(str(GlobalFiles.MKVMERGE_VERSION))
+        self.app_mkvpropedit_current_version = QLabel(str(GlobalFiles.MKVPROPEDIT_VERSION))
         self.app_link_github_label = QLabel("Check for updates on: " + GitHubRepoUrlTag)
         self.app_link_github_label.setOpenExternalLinks(True)
         self.app_licence_label = QLabel("MKV Muxing Batch GUI is released under the " + GPLV2UrlTag + "+ licence")
@@ -43,9 +45,12 @@ class AboutDialog(MyDialog):
         self.social_twitter_label = TwitterLabel()
         self.social_telegram_label = TelegramLabel()
         self.ok_button = QPushButton("OK")
+        self.check_for_updates_button = QPushButton("Check for Updates")
+        self.update_checker = UpdateChecker(parent=self)
         self.donate_button = DonateButton()
         self.buttons_layout = QHBoxLayout()
         self.buttons_layout.addStretch(0)
+        self.buttons_layout.addWidget(self.check_for_updates_button)
         # self.buttons_layout.addWidget(self.donate_button)
         self.buttons_layout.addWidget(self.ok_button)
         self.buttons_layout.addStretch(0)
@@ -87,6 +92,22 @@ class AboutDialog(MyDialog):
 
     def signal_connect(self):
         self.ok_button.clicked.connect(self.click_yes)
+        self.check_for_updates_button.clicked.connect(self.check_for_updates)
+        self.update_checker.finished.connect(self.update_check_finished)
+
+    def check_for_updates(self):
+        if self.update_checker.check(
+            Version,
+            GlobalFiles.MKVMERGE_VERSION,
+            GlobalFiles.MKVPROPEDIT_VERSION,
+        ):
+            self.check_for_updates_button.setEnabled(False)
+            self.check_for_updates_button.setText("Checking…")
+
+    def update_check_finished(self, report):
+        self.check_for_updates_button.setEnabled(True)
+        self.check_for_updates_button.setText("Check for Updates")
+        show_update_report(report, parent=self, always_show=True)
 
     def click_yes(self):
         self.close()

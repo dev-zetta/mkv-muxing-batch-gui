@@ -13,3 +13,20 @@ test.py
 /build/
 /dist/
 /release/
+/.dependency-cache/
+
+# Executables and dependency archives must be fetched from verified sources.
+*.7z
+*.AppImage
+*.dll
+*.dylib
+*.exe
+*.rar
+*.so
+*.so.*
+*.tlb
+*.zip
+
+# Resources/Tools is documentation-only in source control.
+/Resources/Tools/**
+!/Resources/Tools/README.md

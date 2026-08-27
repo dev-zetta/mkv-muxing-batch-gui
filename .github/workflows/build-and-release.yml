@@ -1,0 +1,289 @@
+name: Build and release
+
+on:
+  pull_request:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.14"
+
+jobs:
+  metadata:
+    name: Validate release metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Read and validate version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^Version = "\([^"]*\)"/\1/p' packages/Startup/Version.py)
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid stable version in packages/Startup/Version.py: $version" >&2
+            exit 1
+          fi
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "$version" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match source version $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  windows:
+    name: Build Windows installer and portable archive
+    needs: metadata
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: x64
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Run tests
+        env:
+          MKV_MUXING_BATCH_GUI_DATA_DIR: ${{ runner.temp }}\mkv-muxing-batch-gui-tests
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -v
+
+      - name: Build release packages
+        shell: pwsh
+        run: >-
+          ./packaging/windows/build_release.ps1
+          -Version '${{ needs.metadata.outputs.version }}'
+          -Python 'python'
+
+      - name: Validate portable archive and installer
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+          MKV_MUXING_BATCH_GUI_DATA_DIR: ${{ runner.temp }}\mkv-muxing-batch-gui-smoke
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $ErrorActionPreference = "Stop"
+          $portable = Join-Path $PWD "release\MKV.Muxing.Batch.GUI.x64.v$env:RELEASE_VERSION.Qt6.Windows.Portable.zip"
+          $installer = Join-Path $PWD "release\MKV.Muxing.Batch.GUI.x64.v$env:RELEASE_VERSION.Qt6.Windows.Installer.exe"
+          $portableRoot = Join-Path $env:RUNNER_TEMP "portable"
+          $installRoot = Join-Path $env:RUNNER_TEMP "installed"
+
+          Expand-Archive -LiteralPath $portable -DestinationPath $portableRoot
+          $portableApp = Get-ChildItem -LiteralPath $portableRoot -Filter "MKV Muxing Batch GUI.exe" -Recurse | Select-Object -First 1
+          if (-not $portableApp) {
+              throw "Portable archive does not contain the application executable"
+          }
+          & $portableApp.FullName --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+              throw "Portable application smoke test failed with exit code $LASTEXITCODE"
+          }
+
+          $packagedTools = Get-ChildItem -LiteralPath $portableRoot -Filter "mkvmerge.exe" -Recurse
+          if ($packagedTools.Count -ne 1) {
+              throw "Portable archive must contain exactly one mkvmerge.exe"
+          }
+          $toolVersion = (& $packagedTools[0].FullName -V | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $toolVersion -notmatch [regex]::Escape("v101.0")) {
+              throw "Packaged mkvmerge did not report MKVToolNix 101.0"
+          }
+
+          & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot"
+          if ($LASTEXITCODE -ne 0) {
+              throw "Silent installer validation failed with exit code $LASTEXITCODE"
+          }
+          $installedApp = Join-Path $installRoot "MKV Muxing Batch GUI.exe"
+          & $installedApp --smoke-test
+          if ($LASTEXITCODE -ne 0) {
+              throw "Installed application smoke test failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-windows-${{ needs.metadata.outputs.version }}
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Build Linux archive
+    needs: metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: x64
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libxcb-cursor0 mkvtoolnix
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Run tests
+        env:
+          MKV_MUXING_BATCH_GUI_DATA_DIR: ${{ runner.temp }}/mkv-muxing-batch-gui-tests
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -v
+
+      - name: Build and validate archive
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+          MKV_MUXING_BATCH_GUI_DATA_DIR: ${{ runner.temp }}/mkv-muxing-batch-gui-smoke
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          python -m PyInstaller --noconfirm --clean packaging/linux/MkvMuxingBatch.spec
+          app="dist/MKV Muxing Batch GUI/mkv-muxing-batch-gui"
+          "$app" --smoke-test
+          if ldd "$app" | grep -q "not found"; then
+            echo "The packaged application has unresolved shared libraries" >&2
+            exit 1
+          fi
+
+          mkdir -p release
+          archive="release/MKV.Muxing.Batch.GUI.x64.v${RELEASE_VERSION}.Qt6.Linux.tar.gz"
+          tar -czf "$archive" -C dist "MKV Muxing Batch GUI"
+
+          extract_root=$(mktemp -d "$RUNNER_TEMP/mkv-muxing-batch-gui.XXXXXX")
+          tar -xzf "$archive" -C "$extract_root"
+          "$extract_root/MKV Muxing Batch GUI/mkv-muxing-batch-gui" --smoke-test
+
+      - name: Upload Linux release asset
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-linux-${{ needs.metadata.outputs.version }}
+          path: release/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs:
+      - metadata
+      - windows
+      - linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Download release assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: release-*-${{ needs.metadata.outputs.version }}
+          path: release
+          merge-multiple: true
+
+      - name: Verify assets and prepare release notes
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          expected=(
+            "MKV.Muxing.Batch.GUI.x64.v${RELEASE_VERSION}.Qt6.Linux.tar.gz"
+            "MKV.Muxing.Batch.GUI.x64.v${RELEASE_VERSION}.Qt6.Windows.Installer.exe"
+            "MKV.Muxing.Batch.GUI.x64.v${RELEASE_VERSION}.Qt6.Windows.Portable.zip"
+          )
+          for name in "${expected[@]}"; do
+            test -s "release/$name"
+          done
+          file_count=$(find release -maxdepth 1 -type f | wc -l)
+          if [[ "$file_count" -ne "${#expected[@]}" ]]; then
+            echo "Expected ${#expected[@]} release assets, found $file_count" >&2
+            exit 1
+          fi
+
+          (
+            cd release
+            sha256sum "${expected[@]}" > SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
+          awk -v heading="## [$RELEASE_VERSION]" '
+            $0 == heading { found = 1; next }
+            /^## \[/ && found { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md
+
+      - name: Create, upload, verify, and publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            is_draft=$(gh release view "$RELEASE_VERSION" --json isDraft --jq .isDraft)
+            if [[ "$is_draft" != "true" ]]; then
+              echo "Release $RELEASE_VERSION already exists and is published" >&2
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_VERSION" \
+              --verify-tag \
+              --draft \
+              --title "MKV Muxing Batch GUI $RELEASE_VERSION" \
+              --notes-file release-notes.md
+          fi
+
+          gh release upload "$RELEASE_VERSION" release/* --clobber
+          remote_count=$(gh release view "$RELEASE_VERSION" --json assets --jq '.assets | length')
+          if [[ "$remote_count" -ne 4 ]]; then
+            echo "Expected 4 uploaded release assets, found $remote_count" >&2
+            exit 1
+          fi
+          for asset in release/*; do
+            name=$(basename "$asset")
+            local_size=$(stat --format=%s "$asset")
+            remote_size=$(gh release view "$RELEASE_VERSION" --json assets --jq ".assets[] | select(.name == \"$name\") | .size")
+            if [[ "$remote_size" != "$local_size" ]]; then
+              echo "Uploaded asset size mismatch for $name" >&2
+              exit 1
+            fi
+          done
+
+          gh release edit "$RELEASE_VERSION" --draft=false --latest
+          gh release view "$RELEASE_VERSION" --json url,isDraft,isPrerelease,assets

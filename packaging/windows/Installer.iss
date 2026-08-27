@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "2.7.2"
+  #define MyAppVersion "2.8.0"
 #endif
 #define MyAppName "MKV Muxing Batch GUI"
 #define MyAppExeName "MKV Muxing Batch GUI.exe"

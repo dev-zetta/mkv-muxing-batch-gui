@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 from pathlib import Path
 
 
@@ -16,11 +17,19 @@ def collect_files(source, destination):
 
 
 datas = []
-for directory_name in ("DLL", "Fonts", "Icons", "Languages"):
+for directory_name in ("Fonts", "Icons", "Languages"):
     datas.extend(collect_files(resources_root / directory_name, f"Resources/{directory_name}"))
-datas.extend(
-    collect_files(resources_root / "Tools" / "Windows64", "Resources/Tools/Windows64")
-)
+
+mkvtoolnix_bundle = os.environ.get("MKVTOOLNIX_BUNDLE_DIR")
+if not mkvtoolnix_bundle:
+    raise SystemExit(
+        "MKVTOOLNIX_BUNDLE_DIR is required. Run packaging/windows/build_release.ps1."
+    )
+mkvtoolnix_bundle = Path(mkvtoolnix_bundle).resolve()
+for required_name in ("mkvmerge.exe", "mkvpropedit.exe", "PROVENANCE.json"):
+    if not (mkvtoolnix_bundle / required_name).is_file():
+        raise SystemExit(f"Verified MKVToolNix bundle is missing {required_name}")
+datas.extend(collect_files(mkvtoolnix_bundle, "Resources/Tools/Windows64"))
 
 a = Analysis(
     [str(project_root / "main.py")],

@@ -5,6 +5,35 @@ All notable changes to this maintained fork are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-08-27
+
+### Added
+
+- Add automatic background and manual update checks for stable application and
+  MKVToolNix releases, with actionable notifications for outdated versions.
+- Add a reproducible Windows dependency fetcher that downloads MKVToolNix 101.0
+  from the publisher, requires the live and repository-pinned SHA-256 values to
+  agree, and extracts only the two required tools and license notices.
+- Add a repository binary-policy regression test and a documented payload audit.
+- Add a GitHub Actions workflow that tests and builds Windows and Linux release
+  packages, validates the packaged applications, and publishes verified assets
+  with a combined SHA-256 manifest from stable version tags.
+
+### Changed
+
+- Missing MKVToolNix tools no longer prevent the application from opening. The
+  startup warning can open the official download page, retry tool discovery,
+  or let the user continue without muxing support.
+- Windows release builds stage verified MKVToolNix tools outside the source tree;
+  Linux and source builds continue to prefer a current system installation.
+- Limit `comtypes` installation to Windows and use source-defined taskbar COM
+  interfaces without a precompiled type library.
+
+### Removed
+
+- Remove all committed MKVToolNix executables, the obsolete `TaskbarLib.tlb`,
+  and the redundant `Prepare Exe.rar` release-preparation archive.
+
 ## [2.7.2] - 2026-08-27
 
 ### Fixed
@@ -46,4 +75,5 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Add a complete snapshot and severity triage of all 121 issues from the
   original repository in `docs/UPSTREAM_ISSUES.md`.
 
+[2.8.0]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.0
 [2.7.2]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.7.2

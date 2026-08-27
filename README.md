@@ -8,13 +8,13 @@
 
 A focused desktop workspace for muxing entire video collections with precise track control.
 
-[![Latest release](https://img.shields.io/github/v/release/orphick/mkv-muxing-batch?display_name=tag&sort=semver&style=flat-square&color=7657b4)](https://github.com/orphick/mkv-muxing-batch/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/orphick/mkv-muxing-batch/total?style=flat-square&color=7657b4)](https://github.com/orphick/mkv-muxing-batch/releases)
-[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2f7dd1?style=flat-square&logo=windows11)](https://github.com/orphick/mkv-muxing-batch/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/dev-zetta/mkv-muxing-batch-gui?display_name=tag&sort=semver&style=flat-square&color=7657b4)](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/dev-zetta/mkv-muxing-batch-gui/total?style=flat-square&color=7657b4)](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2f7dd1?style=flat-square&logo=windows11)](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/latest)
 [![Python](https://img.shields.io/badge/Python-3.14-3776ab?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/github/license/orphick/mkv-muxing-batch?style=flat-square&color=3ca374)](LICENSE)
+[![License](https://img.shields.io/github/license/dev-zetta/mkv-muxing-batch-gui?style=flat-square&color=3ca374)](LICENSE)
 
-[Download](#download) · [See what it can do](#what-it-does) · [Run from source](#run-from-source) · [Report a problem](https://github.com/orphick/mkv-muxing-batch/issues)
+[Download](#download) · [Changelog](CHANGELOG.md) · [See what it can do](#what-it-does) · [Run from source](#run-from-source) · [Report a problem](https://github.com/dev-zetta/mkv-muxing-batch-gui/issues)
 
 </div>
 
@@ -86,11 +86,15 @@ For example, `{stem}` can make every MKV title follow its source filename, while
 
 ## Download
 
-The packaged release supports **64-bit Windows 10 and Windows 11**.
+The project supports **64-bit Windows 10 and Windows 11**, plus modern x86-64
+Linux distributions.
 
-[**Download the latest release →**](https://github.com/orphick/mkv-muxing-batch/releases/latest)
+[**Download the latest release →**](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/latest)
 
-Choose the installer for a normal Windows installation or the portable ZIP when you want a self-contained copy. Each release includes a `SHA256SUMS.txt` file for integrity verification.
+Choose the installer for a normal Windows installation or the portable ZIP
+when you want a self-contained Windows copy. The Linux archive requires the
+system MKVToolNix package. Published binary assets include a matching
+`SHA256SUMS.txt` file for integrity verification.
 
 ## Supported files
 
@@ -121,8 +125,8 @@ A few advanced combinations deserve extra care:
 The maintained configuration uses Python 3.14 and PySide6 6.11.2.
 
 ```powershell
-git clone https://github.com/orphick/mkv-muxing-batch.git
-cd mkv-muxing-batch
+git clone https://github.com/dev-zetta/mkv-muxing-batch-gui.git
+cd mkv-muxing-batch-gui
 py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe main.py
@@ -145,7 +149,8 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-Linux source usage is available, but the maintainers currently publish and verify packaged releases only for 64-bit Windows.
+Linux releases are packaged as a one-folder archive and use the distribution's
+MKVToolNix tools. Install the packages above before starting the application.
 
 ## Development
 

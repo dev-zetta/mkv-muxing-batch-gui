@@ -1,10 +1,10 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "2.7.1"
+  #define MyAppVersion "2.7.2"
 #endif
 #define MyAppName "MKV Muxing Batch GUI"
 #define MyAppExeName "MKV Muxing Batch GUI.exe"
 #define MyAppPublisher "MKV Muxing Batch GUI contributors"
-#define MyAppURL "https://github.com/orphick/mkv-muxing-batch"
+#define MyAppURL "https://github.com/dev-zetta/mkv-muxing-batch-gui"
 #define BuildRoot "..\.."
 
 [Setup]

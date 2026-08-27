@@ -5,6 +5,36 @@ All notable changes to this maintained fork are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Add an enabled-by-default output guard that verifies every completed remux
+  contains at least one audio track before accepting it or replacing a source.
+- Add M2TS to the selectable video input extensions.
+- Add regression coverage for Windows UNC source and destination paths.
+
+### Changed
+
+- Allow multiple audio and subtitle tracks to be marked Default and Forced in
+  both the main track editors and queued jobs.
+- Pass MKVToolNix executable, probe, and response-file arguments directly to
+  the process API so spaces, quotes, ampersands, and network paths remain
+  literal rather than being interpreted by a shell.
+
+### Fixed
+
+- Keep valid dropped videos when another selected file is not recognized as a
+  video instead of clearing the complete selection.
+- Report failed media probes per file and always close the loading dialog.
+- Use portable temporary overwrite filenames without trailing spaces.
+- Calculate CRC from the exact completed output path, report CRC failures, and
+  avoid renaming partial outputs after a failed job.
+- Finish failed queue jobs even when MKVToolNix exits without writing the log
+  marker previously expected by the progress reader.
+- Initialize all fields on existing-track data objects and avoid sharing a Qt
+  table instance through a mutable constructor default.
+
 ## [2.8.1] - 2026-08-28
 
 ### Added
@@ -93,6 +123,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Add a complete snapshot and severity triage of all 121 issues from the
   original repository in `docs/UPSTREAM_ISSUES.md`.
 
+[Unreleased]: https://github.com/dev-zetta/mkv-muxing-batch-gui/compare/2.8.1...HEAD
 [2.8.1]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.1
 [2.8.0]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.0
 [2.7.2]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.7.2

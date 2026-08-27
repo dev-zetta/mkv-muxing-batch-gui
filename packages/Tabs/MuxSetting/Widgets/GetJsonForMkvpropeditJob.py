@@ -102,9 +102,13 @@ class GetJsonForMkvpropeditJob:
     def generate_info_file(self):
         info_file_path = GlobalFiles.mkvmergeJsonInfoFilePath
         with open(info_file_path, 'w+', encoding="UTF-8") as info_file:
-            command = add_double_quotation(GlobalFiles.MKVMERGE_PATH) + " -J " + add_double_quotation(
-                self.job.video_name_absolute)
-            subprocess.run(command, shell=True, stdout=info_file, env=GlobalFiles.ENVIRONMENT)
+            command = [GlobalFiles.MKVMERGE_PATH, "-J", str(self.job.video_name_absolute)]
+            result = subprocess.run(command, stdout=info_file, env=GlobalFiles.ENVIRONMENT)
+        if result.returncode not in (0, 1):
+            raise RuntimeError(
+                f"mkvmerge could not inspect {self.job.video_name_absolute} "
+                f"(exit code {result.returncode})"
+            )
         with open(info_file_path, 'r', encoding="UTF-8") as info_file:
             self.json_info = json.load(info_file)
         self.number_of_old_attachments = len(self.json_info["attachments"])

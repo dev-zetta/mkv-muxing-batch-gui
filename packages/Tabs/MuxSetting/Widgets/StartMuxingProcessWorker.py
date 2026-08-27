@@ -11,9 +11,9 @@ class StartMuxingProcessWorker(QObject):
     finished_job_signal = Signal(int)
     all_finished = Signal()
 
-    def __init__(self, command=""):
+    def __init__(self, command=None):
         super().__init__()
-        self.command = command
+        self.command = command or []
         self.wait = True
         self.stop = False
 
@@ -25,7 +25,6 @@ class StartMuxingProcessWorker(QObject):
                         with open(GlobalFiles.MuxingLogFilePath, "a+", encoding="UTF-8") as log_file:
                             mux_process = subprocess.run(
                                 self.command,
-                                shell=True,
                                 stdout=log_file,
                                 env=GlobalFiles.ENVIRONMENT,
                             )

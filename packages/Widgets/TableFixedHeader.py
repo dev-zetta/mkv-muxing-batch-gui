@@ -8,9 +8,9 @@ from packages.Widgets.TableNoSelection import TableWidgetNoSelection
 
 
 class TableFixedHeaderWidget(QTableWidget):
-    def __init__(self, primarytable=QTableWidget(), headername="Test", numberofcolumn=1):
+    def __init__(self, primarytable=None, headername="Test", numberofcolumn=1):
         QTableWidget.__init__(self)
-        self.table = primarytable
+        self.table = primarytable if primarytable is not None else QTableWidget()
         self.table.setColumnCount(numberofcolumn)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)

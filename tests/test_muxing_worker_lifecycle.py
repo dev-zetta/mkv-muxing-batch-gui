@@ -7,6 +7,7 @@ from PySide6.QtCore import QThread, QTimer
 from PySide6.QtWidgets import QApplication
 
 from packages.Startup import GlobalFiles
+from packages.Tabs.GlobalSetting import GlobalSetting
 from packages.Tabs.MuxSetting.Widgets.CalculateCRCProcessWorker import (
     CalculateCRCProcessWorker,
 )
@@ -125,6 +126,68 @@ class MuxingWorkerLifecycleTests(unittest.TestCase):
             self.assertEqual(progress_updates[-1], 100)
         finally:
             os.unlink(file_handle.name)
+
+    def test_crc_worker_reads_exact_overwrite_output_path(self):
+        old_overwrite = GlobalSetting.OVERWRITE_SOURCE_FILES
+        with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix="#12345.tmp.mkv",
+        ) as file_handle:
+            file_handle.write(b"completed mux output")
+
+        worker = CalculateCRCProcessWorker(file_handle.name)
+        worker.wait = False
+        results = []
+
+        def finish(crc):
+            results.append(crc)
+            worker.stop = True
+
+        worker.crc_result_signal.connect(finish)
+        try:
+            GlobalSetting.OVERWRITE_SOURCE_FILES = True
+            worker.run()
+            self.assertEqual(1, len(results))
+        finally:
+            GlobalSetting.OVERWRITE_SOURCE_FILES = old_overwrite
+            os.unlink(file_handle.name)
+
+    def test_crc_failure_is_reported_instead_of_silently_ending(self):
+        worker = CalculateCRCProcessWorker("/missing/completed-output.mkv")
+        worker.wait = False
+        errors = []
+
+        def fail(error):
+            errors.append(error)
+            worker.stop = True
+
+        worker.crc_failed_signal.connect(fail)
+        worker.run()
+
+        self.assertEqual(1, len(errors))
+        self.assertIn("completed-output.mkv", errors[0])
+
+    def test_log_reader_finishes_when_process_ends_without_marker(self):
+        original_log_path = GlobalFiles.MuxingLogFilePath
+        log_file = tempfile.NamedTemporaryFile(delete=False)
+        log_file.close()
+        reader = ReadFromMkvmergeLogWorker(job_index=3)
+        reader.wait = False
+        reader.process_finished = True
+        finished = []
+
+        def finish():
+            finished.append(True)
+            reader.stop = True
+
+        reader.finished_job_signal.connect(finish)
+        try:
+            GlobalFiles.MuxingLogFilePath = log_file.name
+            reader.run()
+            self.assertEqual([True], finished)
+        finally:
+            GlobalFiles.MuxingLogFilePath = original_log_path
+            os.unlink(log_file.name)
 
 
 if __name__ == "__main__":

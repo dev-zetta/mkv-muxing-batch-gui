@@ -44,6 +44,13 @@ def get_time():
     return str(time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime(t)))
 
 
+def is_valid_destination_path_syntax(path, platform_name=None):
+    platform_name = os.name if platform_name is None else platform_name
+    if platform_name != "nt":
+        return True
+    return path.startswith("\\\\") or path[1:3] in (":\\", ":/")
+
+
 def change_global_LogFilePath():
     t = get_time()
     log_file_name = "muxing_log_file_" + t + ".txt"
@@ -202,6 +209,9 @@ class MuxSettingTab(QWidget):
             self.make_this_subtitle_default_comboBox_text_changed)
 
         self.abort_on_errors_checkBox.stateChanged.connect(self.abort_on_errors_state_changed)
+        self.require_audio_output_checkBox.stateChanged.connect(
+            self.require_audio_output_state_changed
+        )
         self.add_crc_checksum_checkBox.stateChanged.connect(self.add_crc_checksum_state_changed)
         self.remove_old_crc_checksum_checkBox.stateChanged.connect(self.remove_old_crc_checksum_state_changed)
 
@@ -221,6 +231,7 @@ class MuxSettingTab(QWidget):
         self.setup_destination_path_lineEdit()
         self.setup_destination_path_button()
         self.setup_abort_on_errors_checkBox()
+        self.setup_require_audio_output_checkBox()
         self.setup_discard_old_attachments_checkBox()
         self.setup_keep_log_file_checkBox()
         self.setup_add_crc_checksum_checkBox()
@@ -256,6 +267,7 @@ class MuxSettingTab(QWidget):
         self.make_this_audio_default_comboBox = MakeThisTrackDefaultComboBox()
         self.make_this_subtitle_default_comboBox = MakeThisTrackDefaultComboBox()
         self.abort_on_errors_checkBox = QCheckBox()
+        self.require_audio_output_checkBox = QCheckBox()
         self.discard_old_attachments_checkBox = QCheckBox()
         self.keep_log_file_checkBox = QCheckBox()
         self.add_crc_checksum_checkBox = QCheckBox()
@@ -294,11 +306,12 @@ class MuxSettingTab(QWidget):
         self.mux_setting_layout.addWidget(self.behavior_label, 12, 0, 1, 2)
         self.mux_setting_layout.addWidget(self.add_crc_checksum_checkBox, 13, 0)
         self.mux_setting_layout.addWidget(self.remove_old_crc_checksum_checkBox, 13, 1)
-        self.mux_setting_layout.addWidget(self.abort_on_errors_checkBox, 14, 0)
-        self.mux_setting_layout.addWidget(self.keep_log_file_checkBox, 14, 1)
-        self.mux_setting_layout.setRowStretch(15, 1)
-        self.mux_setting_layout.addWidget(self.clear_job_queue_button, 16, 0, 1, 2)
-        self.mux_setting_layout.addWidget(self.control_queue_button, 17, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.require_audio_output_checkBox, 14, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.abort_on_errors_checkBox, 15, 0)
+        self.mux_setting_layout.addWidget(self.keep_log_file_checkBox, 15, 1)
+        self.mux_setting_layout.setRowStretch(16, 1)
+        self.mux_setting_layout.addWidget(self.clear_job_queue_button, 17, 0, 1, 2)
+        self.mux_setting_layout.addWidget(self.control_queue_button, 18, 0, 1, 2)
 
     def setup_mux_tools_layout_first_row(self):
         self.h1 = QHBoxLayout()
@@ -370,6 +383,16 @@ class MuxSettingTab(QWidget):
         self.abort_on_errors_checkBox.setText("Abort On Errors")
         self.abort_on_errors_checkBox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
 
+    def setup_require_audio_output_checkBox(self):
+        self.require_audio_output_checkBox.setText("Require At Least One Audio Track")
+        self.require_audio_output_checkBox.setChecked(
+            GlobalSetting.MUX_SETTING_REQUIRE_AUDIO
+        )
+        self.require_audio_output_checkBox.setToolTip(
+            "Validate every completed MKV and block source replacement when the "
+            "output contains no audio tracks"
+        )
+
     def setup_destination_path_button(self):
         self.destination_path_button.setIcon(GlobalIcons.SelectFolderIcon)
         self.destination_path_button.setText(" Choose Folder")
@@ -437,11 +460,8 @@ class MuxSettingTab(QWidget):
                 else:
                     return False
             # check if system is windows so path must have # SOME_LETTER:\
-            if os.name == 'nt':
-                if temp_destination_path[1:3] != ":\\" and self.destination_path_lineEdit.text()[
-                                                           1:3] != ":/" and not temp_destination_path.startswith(
-                    "\\\\"):
-                    raise Exception(f"[WinError 999] Not a valid path : '{temp_destination_path}'")
+            if not is_valid_destination_path_syntax(temp_destination_path):
+                raise Exception(f"[WinError 999] Not a valid path : '{temp_destination_path}'")
             ## test if i can write into this path:
             makedirs(temp_destination_path, exist_ok=True)
             test_file_name = str(time.time()) + ".txt"
@@ -699,16 +719,23 @@ class MuxSettingTab(QWidget):
         self.destination_path_lineEdit.setEnabled(True)
         self.destination_path_button.setEnabled(True)
         self.abort_on_errors_checkBox.setEnabled(True)
+        self.require_audio_output_checkBox.setEnabled(True)
         self.keep_log_file_checkBox.setEnabled(True)
 
     def disable_muxing_setting(self):
         self.destination_path_lineEdit.setEnabled(False)
         self.destination_path_button.setEnabled(False)
         self.abort_on_errors_checkBox.setEnabled(False)
+        self.require_audio_output_checkBox.setEnabled(False)
         self.keep_log_file_checkBox.setEnabled(False)
 
     def abort_on_errors_state_changed(self, state):
         GlobalSetting.MUX_SETTING_ABORT_ON_ERRORS = bool(state)
+        if not GlobalSetting.JOB_QUEUE_EMPTY:
+            self.job_queue_layout.persist_queue()
+
+    def require_audio_output_state_changed(self, state):
+        GlobalSetting.MUX_SETTING_REQUIRE_AUDIO = bool(state)
         if not GlobalSetting.JOB_QUEUE_EMPTY:
             self.job_queue_layout.persist_queue()
 
@@ -838,6 +865,9 @@ class MuxSettingTab(QWidget):
             return False
         self.destination_path_lineEdit.setText(GlobalSetting.DESTINATION_FOLDER_PATH)
         self.abort_on_errors_checkBox.setChecked(GlobalSetting.MUX_SETTING_ABORT_ON_ERRORS)
+        self.require_audio_output_checkBox.setChecked(
+            GlobalSetting.MUX_SETTING_REQUIRE_AUDIO
+        )
         self.keep_log_file_checkBox.setChecked(GlobalSetting.MUX_SETTING_KEEP_LOG_FILE)
         self.add_crc_checksum_checkBox.setChecked(GlobalSetting.MUX_SETTING_ADD_CRC)
         self.remove_old_crc_checksum_checkBox.setChecked(GlobalSetting.MUX_SETTING_REMOVE_OLD_CRC)

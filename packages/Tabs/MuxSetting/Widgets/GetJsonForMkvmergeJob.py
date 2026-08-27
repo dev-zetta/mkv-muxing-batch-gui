@@ -55,7 +55,7 @@ def change_file_extension_to_mkv(file_name):
 def change_file_extension_to_mkv_with_random_suffix(file_name):
     file_extension_start_index = file_name.rfind(".")
     new_file_name_with_mkv_extension = file_name[
-                                       :file_extension_start_index] + "#" + GlobalSetting.RANDOM_OUTPUT_SUFFIX + ".mkv "
+                                       :file_extension_start_index] + "#" + GlobalSetting.RANDOM_OUTPUT_SUFFIX + ".tmp.mkv"
     return new_file_name_with_mkv_extension
 
 
@@ -136,9 +136,13 @@ class GetJsonForMkvmergeJob:
     def generate_info_file(self):
         info_file_path = GlobalFiles.mkvmergeJsonInfoFilePath
         with open(info_file_path, 'w+', encoding="UTF-8") as info_file:
-            command = add_double_quotation(GlobalFiles.MKVMERGE_PATH) + " -J " + add_double_quotation(
-                self.job.video_name_absolute)
-            subprocess.run(command, shell=True, stdout=info_file, env=GlobalFiles.ENVIRONMENT)
+            command = [GlobalFiles.MKVMERGE_PATH, "-J", str(self.job.video_name_absolute)]
+            result = subprocess.run(command, stdout=info_file, env=GlobalFiles.ENVIRONMENT)
+        if result.returncode not in (0, 1):
+            raise RuntimeError(
+                f"mkvmerge could not inspect {self.job.video_name_absolute} "
+                f"(exit code {result.returncode})"
+            )
         with open(info_file_path, 'r', encoding="UTF-8") as info_file:
             self.json_info = json.load(info_file)
         self.tracks_json_info = self.json_info["tracks"]
@@ -325,7 +329,6 @@ class GetJsonForMkvmergeJob:
                     if self.job.subtitle_set_default[i]:
                         subtitle_command_list.append(add_json_line("--default-track"))
                         subtitle_command_list.append(add_json_line("0:yes"))
-                        self.make_other_subtitle_not_default()
                     else:
                         subtitle_command_list.append(add_json_line("--default-track"))
                         subtitle_command_list.append(add_json_line("0:no"))
@@ -333,7 +336,6 @@ class GetJsonForMkvmergeJob:
                     if self.job.subtitle_set_forced[i]:
                         subtitle_command_list.append(add_json_line("--forced-track"))
                         subtitle_command_list.append(add_json_line("0:yes"))
-                        self.make_other_subtitle_not_forced()
                     else:
                         subtitle_command_list.append(add_json_line("--forced-track"))
                         subtitle_command_list.append(add_json_line("0:no"))
@@ -458,7 +460,6 @@ class GetJsonForMkvmergeJob:
                     if self.job.audio_set_default[i]:
                         audio_command_list.append(add_json_line("--default-track"))
                         audio_command_list.append(add_json_line("0:yes"))
-                        self.make_other_audio_not_default()
                     else:
                         audio_command_list.append(add_json_line("--default-track"))
                         audio_command_list.append(add_json_line("0:no"))
@@ -466,7 +467,6 @@ class GetJsonForMkvmergeJob:
                     if self.job.audio_set_forced[i]:
                         audio_command_list.append(add_json_line("--forced-track"))
                         audio_command_list.append(add_json_line("0:yes"))
-                        self.make_other_audio_not_forced()
                     else:
                         audio_command_list.append(add_json_line("--forced-track"))
                         audio_command_list.append(add_json_line("0:no"))
@@ -525,38 +525,6 @@ class GetJsonForMkvmergeJob:
             tracks_order_list.sort()
             for track_order in tracks_order_list:
                 self.track_order_line += track_order[3]
-
-    def make_other_subtitle_not_default(self):
-        change_default_subtitle_commands_list = []
-        for track in self.subtitles_track_json_info:
-            change_default_subtitle_commands_list.append(add_json_line("--default-track"))
-            change_default_subtitle_commands_list.append(add_json_line(track.id + ":no"))
-        self.change_default_forced_subtitle_track_setting_source_video_command += "".join(
-            change_default_subtitle_commands_list)
-
-    def make_other_subtitle_not_forced(self):
-        change_forced_subtitle_commands_list = []
-        for track in self.subtitles_track_json_info:
-            change_forced_subtitle_commands_list.append(add_json_line("--forced-track"))
-            change_forced_subtitle_commands_list.append(add_json_line(track.id + ":no"))
-        self.change_default_forced_subtitle_track_setting_source_video_command += "".join(
-            change_forced_subtitle_commands_list)
-
-    def make_other_audio_not_forced(self):
-        change_forced_audio_commands_list = []
-        for track in self.audios_track_json_info:
-            change_forced_audio_commands_list.append(add_json_line("--forced-track"))
-            change_forced_audio_commands_list.append(add_json_line(track.id + ":no"))
-        self.change_default_forced_audio_track_setting_source_video_command += "".join(
-            change_forced_audio_commands_list)
-
-    def make_other_audio_not_default(self):
-        change_default_audio_commands_list = []
-        for track in self.audios_track_json_info:
-            change_default_audio_commands_list.append(add_json_line("--default-track"))
-            change_default_audio_commands_list.append(add_json_line(track.id + ":no"))
-        self.change_default_forced_audio_track_setting_source_video_command += "".join(
-            change_default_audio_commands_list)
 
     def setup_which_old_videos_to_keep(self):
         if GlobalSetting.VIDEO_OLD_TRACKS_VIDEOS_DELETED_ACTIVATED:

@@ -47,6 +47,18 @@ batch workflow becomes unusable. Feature requests are not labeled as bugs.
 - **Major — overwrite safety:** the old flow deleted the source before renaming
   the generated file. It now validates the generated output, atomically replaces
   an MKV source, and publishes a new-format MKV before removing a non-MKV source.
+- **Major — #144:** the enabled-by-default audio guard probes the completed MKV,
+  rejects missing or unverifiable audio, removes the rejected remux, and blocks
+  overwrite finalization. A real MKVToolNix test accepts a one-audio-track file
+  and rejects a video-only file.
+- **Major — #127 and #162:** audio and subtitle editors now preserve multiple
+  Default and Forced selections for new and existing tracks; generated response
+  files no longer clear an independently selected source-track flag.
+- **Major — #153:** source and destination validation accepts Windows UNC paths,
+  Linux-mounted SMB paths follow the ordinary filesystem path, and MKVToolNix
+  arguments no longer pass through a shell. Automated UNC regressions pass;
+  validation against physical NAS hardware remains an environment-specific
+  acceptance check.
 
 ### Major issues still requiring work
 
@@ -54,28 +66,36 @@ batch workflow becomes unusable. Feature requests are not labeled as bugs.
   unsigned frozen executables. The adopted baseline adds reproducible packaging
   and SHA-256 manifests, but future Windows artifacts still need clean-builder
   provenance, signing, and independent malware scans.
-- **#144 — zero-audio guard:** this is a valuable destructive-operation preflight
-  and should be implemented before expanding format features.
-- **#127 and #162 — multiple default/forced flags:** a candidate implementation
-  exists in the Khaoklong testing branch, but it needs isolated tests against
-  current Matroska semantics before integration.
-- **#153 — network folders:** UNC/SMB support was previously claimed as fixed,
-  but the newer report needs reproduction on current Windows and Linux paths.
 
 ### Minor bugs, usability reports, and support questions
 
-- **#117** is a stale release-page link defect.
+- **#117** is a stale original release-page link defect; the maintained fork
+  points downloads to its own latest-release page.
 - **#165** is mainly discoverability: the two entries are the default favorites;
   more languages already exist in Settings.
 - **#120** is a matching/empty-slot workflow limitation.
-- **#137** is an extension-list omission, while #130 and #171 request non-Matroska
-  output that `mkvmerge` does not produce.
+- **#137** is addressed by adding M2TS to the selectable video extensions, while
+  #130 and #171 request non-Matroska output that `mkvmerge` does not produce.
 - **#41** is partly addressed by subtitle-folder monitoring in 2.7.1.
 - **#125 and #148** are addressed by 2.7.1 metadata title templates.
 
-The remaining open reports are enhancements, support requests, or meta threads.
-They should be prioritized after destructive-operation guards and real hardware/
-filesystem reproductions.
+The remaining open reports are enhancements, support requests, meta threads, or
+release-provenance work that requires signing and external scanning rather than
+an application-code change.
+
+## Additional codebase audit fixes
+
+- Unsupported-file filtering no longer clears all valid drag-and-drop videos.
+- Failed or malformed media probes are reported per file and cannot leave the
+  loading dialog open indefinitely.
+- CRC jobs use the exact completed output path, report errors back to the queue,
+  and never rename a failed or rejected output.
+- Process completion now releases the progress reader even when no terminal log
+  marker was written, preventing a failed queue item from hanging indefinitely.
+- MKVToolNix calls use argument lists rather than shell command strings, fixing
+  special-character path handling and removing shell interpretation.
+- Existing-track models initialize every comparison field, and table widgets no
+  longer share a mutable Qt widget as a constructor default.
 
 ## Complete issue snapshot
 

@@ -10,12 +10,14 @@ from packages.Tabs.MuxSetting.Widgets.MuxingParams import MuxingParams
 
 def next_line(file, should_stop=lambda: False):
     file.seek(0, 2)  # go to the end of file
-    while not should_stop():
+    while True:
         line = file.readline()
-        if not line:
-            time.sleep(0.05)
-        else:
+        if line:
             yield line
+        elif should_stop():
+            return
+        else:
+            time.sleep(0.05)
 
 
 class ReadFromMkvpropeditLogWorker(QObject):
@@ -28,6 +30,7 @@ class ReadFromMkvpropeditLogWorker(QObject):
         self.job_index = job_index
         self.wait = True
         self.stop = False
+        self.process_finished = False
 
     def run(self):
         try:
@@ -37,7 +40,9 @@ class ReadFromMkvpropeditLogWorker(QObject):
                     muxing_params.index = self.job_index
                     muxing_params.progress = 0
                     with open(GlobalFiles.MuxingLogFilePath, "a+", encoding="UTF-8") as log_file:
-                        for line in next_line(log_file, lambda: self.stop):
+                        for line in next_line(
+                                log_file,
+                                lambda: self.stop or self.process_finished):
                             if line.find('Done.') != -1 or line.find('No changes were made') != -1:
                                 muxing_params.progress = 100
                                 self.send_muxing_progress_data_signal.emit(muxing_params)
@@ -51,6 +56,7 @@ class ReadFromMkvpropeditLogWorker(QObject):
                         break
                     self.finished_job_signal.emit()
                     self.wait = True
+                    self.process_finished = False
                 else:
                     QThread.msleep(50)
 

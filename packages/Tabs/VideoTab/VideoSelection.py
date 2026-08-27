@@ -38,6 +38,20 @@ def get_files_size_with_absolute_path_list(files_name_absolute_path):
     return files_size_list
 
 
+def filter_unsupported_files(files, unsupported_files):
+    """Keep valid files without depending on path object/string identity."""
+    unsupported_paths = {
+        os.path.normcase(os.path.normpath(os.fspath(file_path)))
+        for file_path in unsupported_files
+    }
+    return [
+        file_path
+        for file_path in files
+        if os.path.normcase(os.path.normpath(os.fspath(file_path)))
+        not in unsupported_paths
+    ]
+
+
 
 def update_global_videos_tracks_info():
     GlobalSetting.MUX_SETTING_AUDIO_TRACKS_LIST = refresh_tracks("audio")
@@ -153,15 +167,16 @@ class VideoSelectionSetting(GlobalSetting):
                 if len(new_files_absolute_path_list) > 0:
                     self.unsupported_files_list = self.start_loading_new_videos_dialog(new_files_absolute_path_list)
                     if len(self.unsupported_files_list) > 0:
-                        new_files_absolute_path_list = []
+                        new_files_absolute_path_list = filter_unsupported_files(
+                            new_files_absolute_path_list,
+                            self.unsupported_files_list,
+                        )
                         self.files_names_list = []
                         self.folders_paths = []
                         for file_absolute_path in new_files_absolute_path_list:
-                            if file_absolute_path not in self.unsupported_files_list:
-                                new_files_absolute_path_list.append(file_absolute_path)
-                                self.files_names_list.append(os.path.basename(file_absolute_path))
-                                if os.path.dirname(file_absolute_path) not in self.folders_paths:
-                                    self.folders_paths.append(Path(os.path.dirname(file_absolute_path)))
+                            self.files_names_list.append(os.path.basename(file_absolute_path))
+                            if os.path.dirname(file_absolute_path) not in self.folders_paths:
+                                self.folders_paths.append(Path(os.path.dirname(file_absolute_path)))
                         self.files_names_absolute_list = new_files_absolute_path_list.copy()
                         self.files_size_list = get_files_size_with_absolute_path_list(new_files_absolute_path_list)
                         self.files_names_absolute_list_with_dropped_files = new_files_absolute_path_list.copy()
@@ -189,15 +204,16 @@ class VideoSelectionSetting(GlobalSetting):
             if len(self.files_names_absolute_list) > 0:
                 self.unsupported_files_list = self.start_loading_new_videos_dialog(self.files_names_absolute_list)
                 if len(self.unsupported_files_list) > 0:
-                    new_files_absolute_path_list = []
+                    new_files_absolute_path_list = filter_unsupported_files(
+                        self.files_names_absolute_list,
+                        self.unsupported_files_list,
+                    )
                     self.files_names_list = []
                     self.folders_paths = []
-                    for file_absolute_path in self.files_names_absolute_list:
-                        if file_absolute_path not in self.unsupported_files_list:
-                            new_files_absolute_path_list.append(file_absolute_path)
-                            self.files_names_list.append(os.path.basename(file_absolute_path))
-                            if os.path.dirname(file_absolute_path) not in self.folders_paths:
-                                self.folders_paths.append(Path(os.path.dirname(file_absolute_path)))
+                    for file_absolute_path in new_files_absolute_path_list:
+                        self.files_names_list.append(os.path.basename(file_absolute_path))
+                        if os.path.dirname(file_absolute_path) not in self.folders_paths:
+                            self.folders_paths.append(Path(os.path.dirname(file_absolute_path)))
                     self.files_names_absolute_list = new_files_absolute_path_list.copy()
                     self.files_size_list = get_files_size_with_absolute_path_list(new_files_absolute_path_list)
                     self.files_names_absolute_list_with_dropped_files = new_files_absolute_path_list.copy()
@@ -443,13 +459,14 @@ class VideoSelectionSetting(GlobalSetting):
         if len(not_duplicate_files_absolute_path_list) > 0:
             self.unsupported_files_list = self.start_loading_new_videos_dialog(not_duplicate_files_absolute_path_list)
             if len(self.unsupported_files_list) > 0:
-                not_duplicate_files_and_supported_absolute_path_list = []
-                for new_file_name in not_duplicate_files_absolute_path_list:
-                    if new_file_name not in self.unsupported_files_list:
-                        not_duplicate_files_and_supported_absolute_path_list.append(new_file_name)
-                        self.files_names_list.append(os.path.basename(new_file_name))
-                        if os.path.dirname(new_file_name) not in self.folders_paths:
-                            self.folders_paths.append(Path(os.path.dirname(new_file_name)))
+                not_duplicate_files_and_supported_absolute_path_list = filter_unsupported_files(
+                    not_duplicate_files_absolute_path_list,
+                    self.unsupported_files_list,
+                )
+                for new_file_name in not_duplicate_files_and_supported_absolute_path_list:
+                    self.files_names_list.append(os.path.basename(new_file_name))
+                    if os.path.dirname(new_file_name) not in self.folders_paths:
+                        self.folders_paths.append(Path(os.path.dirname(new_file_name)))
                 error_message = "One or more files couldn't be recognised as video:"
                 for file_name_absolute in self.unsupported_files_list:
                     error_message += "\n" + os.path.basename(file_name_absolute)

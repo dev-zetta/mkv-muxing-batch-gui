@@ -48,7 +48,7 @@ The queue is saved automatically. If the application or machine stops unexpected
 ### Handles tracks as tracks—not just files
 
 - Add multiple subtitle and audio sets to every video.
-- Configure language, delay, track name, default/forced state, and output position independently.
+- Configure language, delay, track name, default/forced state, and output position independently, including multiple Default or Forced tracks.
 - Reorder mismatched filenames manually; subtitle and audio filenames do not need to mirror video filenames.
 - Inspect existing tracks, discard unwanted tracks, or keep only selected languages and track IDs.
 - Modify existing track names, languages, order, default state, and forced state.
@@ -76,6 +76,9 @@ For example, `{stem}` can make every MKV title follow its source filename, while
 - Use expert attachment mode to assign different files or folders to individual videos.
 - Skip attachments already present in a source file.
 - Preserve logs, add or remove CRC metadata, and control output destinations.
+- Validate completed remuxes for at least one audio track before accepting them
+  or replacing a source file.
+- Read from and write to mounted network folders and Windows UNC shares.
 - Save favorite directories, languages, extensions, and other defaults as presets.
 
 ## The workflow
@@ -100,7 +103,7 @@ a matching `SHA256SUMS.txt` file for integrity verification.
 
 ## Supported files
 
-- **Video:** AVI, MKV, MP4, M4V, MOV, MPEG, TS, OGG, OGM, H264, H265, WEBM, WMV
+- **Video:** AVI, MKV, MP4, M4V, MOV, MPEG, TS, M2TS, OGG, OGM, H264, H265, WEBM, WMV
 - **Subtitle:** ASS, SRT, SSA, SUP, PGS, MKS, VTT
 - **Audio:** AAC, AC3, FLAC, EAC3, MKA, M4A, MP3, DTS, DTSMA, THD, WAV, OGG, OPUS
 - **Chapter:** XML

@@ -10,12 +10,14 @@ from packages.Tabs.MuxSetting.Widgets.MuxingParams import MuxingParams
 
 def next_line(file, should_stop=lambda: False):
     file.seek(0, 2)  # go to the end of file
-    while not should_stop():
+    while True:
         line = file.readline()
-        if not line:
-            time.sleep(0.05)
-        else:
+        if line:
             yield line
+        elif should_stop():
+            return
+        else:
+            time.sleep(0.05)
 
 
 def get_int_from_string(string):
@@ -24,7 +26,7 @@ def get_int_from_string(string):
 
 
 class ReadFromMkvmergeLogWorker(QObject):
-    finished_job_signal = Signal(str)
+    finished_job_signal = Signal()
     all_finished = Signal()
     send_muxing_progress_data_signal = Signal(MuxingParams)
 
@@ -33,6 +35,7 @@ class ReadFromMkvmergeLogWorker(QObject):
         self.job_index = job_index
         self.wait = True
         self.stop = False
+        self.process_finished = False
 
     def run(self):
         try:
@@ -42,7 +45,9 @@ class ReadFromMkvmergeLogWorker(QObject):
                     muxing_params.index = self.job_index
                     muxing_params.progress = 0
                     with open(GlobalFiles.MuxingLogFilePath, "a+", encoding="UTF-8") as log_file:
-                        for line in next_line(log_file, lambda: self.stop):
+                        for line in next_line(
+                                log_file,
+                                lambda: self.stop or self.process_finished):
                             if line.find('Progress:') != -1:
                                 new_progress = get_int_from_string(line)
                                 muxing_params.progress = new_progress
@@ -62,8 +67,9 @@ class ReadFromMkvmergeLogWorker(QObject):
                                 break
                     if self.stop:
                         break
-                    self.finished_job_signal.emit(muxing_params)
+                    self.finished_job_signal.emit()
                     self.wait = True
+                    self.process_finished = False
 
                 else:
                     QThread.msleep(50)

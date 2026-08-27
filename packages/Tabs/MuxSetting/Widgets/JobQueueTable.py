@@ -103,7 +103,7 @@ def get_file_name_with_mkv_extension(file_name):
 def change_file_extension_to_mkv_with_random_suffix(file_name):
     file_extension_start_index = file_name.rfind(".")
     new_file_name_with_mkv_extension = file_name[
-                                       :file_extension_start_index] + "#" + GlobalSetting.RANDOM_OUTPUT_SUFFIX + ".mkv "
+                                       :file_extension_start_index] + "#" + GlobalSetting.RANDOM_OUTPUT_SUFFIX + ".tmp.mkv"
     return new_file_name_with_mkv_extension
 
 
@@ -909,7 +909,9 @@ class JobQueueTable(TableWidget):
         if GlobalSetting.MUX_SETTING_ABORT_ON_ERRORS:
             self.start_muxing_worker.pause = True
         self.set_job_status_bad(row_index=job_index)
-        self.rename_output_file_if_needed(job_index=job_index)
+        # Never rename or publish a partial/rejected output. In particular,
+        # CRC-enabled failures used to retry a rename for 25 seconds and then
+        # record a path that did not exist.
         self.set_row_value_size_after_muxing(self.data[job_index], job_index)
         self.persist_queue()
 

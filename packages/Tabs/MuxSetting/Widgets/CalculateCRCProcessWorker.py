@@ -1,28 +1,12 @@
-import traceback
 import zlib
 from os.path import getsize
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from packages.Tabs.GlobalSetting import GlobalSetting, write_to_log_file
-
-
-def get_file_name_with_mkv_extension(file_name):
-    file_extension_start_index = file_name.rfind(".")
-    new_file_name_with_mkv_extension = file_name[:file_extension_start_index] + ".mkv"
-    return new_file_name_with_mkv_extension
-
-
-def get_file_name_extension_to_mkv_with_random_suffix(file_name):
-    file_extension_start_index = file_name.rfind(".")
-    new_file_name_with_mkv_extension = file_name[
-                                       :file_extension_start_index] + "#" + GlobalSetting.RANDOM_OUTPUT_SUFFIX + ".mkv "
-    return new_file_name_with_mkv_extension
-
-
 class CalculateCRCProcessWorker(QObject):
     crc_progress_signal = Signal(int)
     crc_result_signal = Signal(str)
+    crc_failed_signal = Signal(str)
     all_finished = Signal()
 
     def __init__(self, file_name=""):
@@ -37,36 +21,37 @@ class CalculateCRCProcessWorker(QObject):
         try:
             while not self.stop:
                 if not self.wait:
-                    if GlobalSetting.OVERWRITE_SOURCE_FILES:
-                        file_name = get_file_name_extension_to_mkv_with_random_suffix(self.file_name)
-                    else:
-                        file_name = get_file_name_with_mkv_extension(self.file_name)
-                    file_size = getsize(file_name)
-                    with open(file_name, "rb") as f:
-                        checksum = 0
-                        current_read = 0
-                        last_reported_percent = -1
-                        while chunk := f.read(self.chunk_size):
+                    try:
+                        # StartMuxingWorker supplies the exact completed output
+                        # path. Rewriting its extension here used to append the
+                        # overwrite suffix twice and made CRC jobs stall.
+                        file_size = getsize(self.file_name)
+                        with open(self.file_name, "rb") as file:
+                            checksum = 0
+                            current_read = 0
+                            last_reported_percent = -1
+                            while chunk := file.read(self.chunk_size):
+                                if self.stop:
+                                    break
+                                current_read += len(chunk)
+                                current_percent = int(min(100 * current_read / file_size, 100))
+                                # Reading a large video in small chunks used to queue
+                                # one GUI event per chunk.  The GUI only displays an
+                                # integer percentage, so duplicate events could leave
+                                # its event loop permanently behind after a long batch.
+                                if current_percent != last_reported_percent:
+                                    self.crc_progress_signal.emit(current_percent)
+                                    last_reported_percent = current_percent
+                                checksum = zlib.crc32(chunk, checksum)
                             if self.stop:
                                 break
-                            current_read += len(chunk)
-                            current_percent = int(min(100 * current_read / file_size, 100))
-                            # Reading a large video in small chunks used to queue
-                            # one GUI event per chunk.  The GUI only displays an
-                            # integer percentage, so duplicate events could leave
-                            # its event loop permanently behind after a long batch.
-                            if current_percent != last_reported_percent:
-                                self.crc_progress_signal.emit(current_percent)
-                                last_reported_percent = current_percent
-                            checksum = zlib.crc32(chunk, checksum)
-                        if self.stop:
-                            break
-                        crc_string = format(checksum & 0xFFFFFFFF, '08x').upper()
-                        self.crc_result_signal.emit(crc_string)
-                    self.wait = True
+                            crc_string = format(checksum & 0xFFFFFFFF, '08x').upper()
+                            self.crc_result_signal.emit(crc_string)
+                    except (OSError, ValueError, ZeroDivisionError) as error:
+                        self.crc_failed_signal.emit(str(error))
+                    finally:
+                        self.wait = True
                 else:
                     QThread.msleep(50)
-        except Exception:
-            write_to_log_file(traceback.format_exc())
         finally:
             self.all_finished.emit()

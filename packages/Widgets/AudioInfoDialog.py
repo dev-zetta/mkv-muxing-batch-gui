@@ -215,18 +215,10 @@ class AudioInfoDialog(MyDialog):
     def update_current_audio_set_default(self):
         new_state = self.audio_set_default_checkBox.checkState() == Qt.CheckState.Checked
         self.current_audio_set_default[self.current_audio_index] = new_state
-        if new_state:
-            for i in range(len(self.current_audio_set_default)):
-                if i != self.current_audio_index:
-                    self.current_audio_set_default[i] = False
 
     def update_current_audio_set_forced(self):
         new_state = self.audio_set_forced_checkBox.checkState() == Qt.CheckState.Checked
         self.current_audio_set_forced[self.current_audio_index] = new_state
-        if new_state:
-            for i in range(len(self.current_audio_set_forced)):
-                if i != self.current_audio_index:
-                    self.current_audio_set_forced[i] = False
 
     def reset_audio_setting(self):
         self.current_audio_language[self.current_audio_index] = self.default_audio_language[

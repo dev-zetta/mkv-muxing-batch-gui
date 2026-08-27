@@ -1,5 +1,6 @@
 import hashlib
 import json
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -164,8 +165,9 @@ class DependencyStagingTests(unittest.TestCase):
             GlobalFiles, "get_custom_program_path", return_value=None
         ), patch.object(GlobalFiles, "which", return_value="/usr/bin/mkvmerge"):
             candidates = GlobalFiles.get_program_candidates("mkvmerge")
+        executable_name = "mkvmerge.exe" if sys.platform == "win32" else "mkvmerge"
         self.assertEqual(
-            Path(GlobalFiles.ManagedToolsFolderPath) / "mkvmerge",
+            Path(GlobalFiles.ManagedToolsFolderPath) / executable_name,
             candidates[0],
         )
 

@@ -21,13 +21,21 @@ class StartMuxingProcessWorker(QObject):
         try:
             while not self.stop:
                 if not self.wait:
-                    with open(GlobalFiles.MuxingLogFilePath, "a+", encoding="UTF-8") as log_file:
-                        mux_process = subprocess.run(self.command, shell=True, stdout=log_file, env=GlobalFiles.ENVIRONMENT)
-                    self.finished_job_signal.emit(mux_process.returncode)
+                    try:
+                        with open(GlobalFiles.MuxingLogFilePath, "a+", encoding="UTF-8") as log_file:
+                            mux_process = subprocess.run(
+                                self.command,
+                                shell=True,
+                                stdout=log_file,
+                                env=GlobalFiles.ENVIRONMENT,
+                            )
+                        exit_code = mux_process.returncode
+                    except Exception:
+                        write_to_log_file(traceback.format_exc())
+                        exit_code = 2
+                    self.finished_job_signal.emit(exit_code)
                     self.wait = True
                 else:
                     QThread.msleep(50)
-        except Exception:
-            write_to_log_file(traceback.format_exc())
         finally:
             self.all_finished.emit()

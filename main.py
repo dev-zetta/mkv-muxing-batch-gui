@@ -8,8 +8,10 @@ import psutil
 from packages.Startup.MainApplication import MainApplication
 from packages.Startup import GlobalFiles
 from packages.Startup import GlobalIcons
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QApplication
+from packages.Widgets.MissingFilesMessage import MissingFilesMessage
 from packages.Widgets.WarningDialog import WarningDialog
 
 if sys.platform == "win32":
@@ -49,6 +51,14 @@ def create_window():
     window = MainWindow(sys.argv)
 
 
+def required_tools_available():
+    error_message = GlobalFiles.get_missing_tools_error()
+    if not error_message:
+        return True
+    MissingFilesMessage(error_message=error_message).execute()
+    return False
+
+
 def run_application():
     app_execute = app.exec()
     kill_all_children()
@@ -84,6 +94,10 @@ def setup_logger():
 if __name__ == "__main__":
     setup_logger()
     create_application()
+    if not required_tools_available():
+        sys.exit(1)
     setup_application_font()
     create_window()
+    if "--smoke-test" in sys.argv:
+        QTimer.singleShot(0, app.quit)
     run_application()

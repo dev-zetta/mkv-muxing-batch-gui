@@ -5,8 +5,7 @@ import subprocess
 import sys
 from os import listdir
 from pathlib import Path
-
-from packages.Widgets.MissingFilesMessage import MissingFilesMessage
+from shutil import which
 
 
 def create_app_data_folder():
@@ -18,19 +17,23 @@ def create_app_data_folder():
         # macOS: ~/Library/Application Support
         # windows: C:/Users/<USER>/AppData/Roaming
         """
+    custom_data_dir = os.environ.get("MKV_MUXING_BATCH_GUI_DATA_DIR")
+    if custom_data_dir:
+        my_app_data_folder = Path(custom_data_dir).expanduser()
+        my_app_data_folder.mkdir(parents=True, exist_ok=True)
+        return my_app_data_folder
+
     home = Path.home()
-    app_data = ""
     if sys.platform == "win32":
         app_data = home / "AppData/Roaming"
     elif sys.platform == "linux":
-        app_data = home / ".local/share"
+        app_data = Path(os.environ.get("XDG_DATA_HOME", home / ".local/share"))
     elif sys.platform == "darwin":
         app_data = home / "Library/Application Support"
+    else:
+        app_data = home / ".local/share"
     my_app_data_folder = app_data / "MKV Muxing Batch GUI"
-    try:
-        os.makedirs(my_app_data_folder, exist_ok=True)
-    except Exception as e:
-        pass
+    my_app_data_folder.mkdir(parents=True, exist_ok=True)
     return my_app_data_folder
 
 
@@ -94,26 +97,99 @@ os.makedirs(MediaInfoFolderPath, exist_ok=True)
 delete_old_media_files()
 
 
-def get_mkvmerge_version():
-    with open(TestMkvmergeFilePath, "w+", encoding="UTF-8") as test_file:
-        try:
-            command = add_double_quotation(MKVMERGE_PATH) + " -V"
-            mux_process = subprocess.run(command, shell=True, stdout=test_file, env=ENVIRONMENT)
-        except:
-            return ""
-    with open(TestMkvmergeFilePath, "r+", encoding="UTF-8") as test_file:
-        return test_file.readline().rstrip()
+def get_program_version(program_path, program_name, environment=None):
+    try:
+        result = subprocess.run(
+            [str(program_path), "-V"],
+            check=False,
+            capture_output=True,
+            env=environment or os.environ.copy(),
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    version = result.stdout.strip()
+    return version if result.returncode == 0 and program_name in version else ""
 
 
-def get_mkvpropedit_version():
-    with open(TestMkvpropeditFilePath, "w+", encoding="UTF-8") as test_file:
-        try:
-            command = add_double_quotation(MKVPROPEDIT_PATH) + " -V"
-            mux_process = subprocess.run(command, shell=True, stdout=test_file, env=ENVIRONMENT)
-        except:
-            return ""
-    with open(TestMkvpropeditFilePath, "r+", encoding="UTF-8") as test_file:
-        return test_file.readline().rstrip()
+def get_custom_program_path(program_name):
+    executable_name = program_name + (".exe" if sys.platform == "win32" else "")
+    for variable_name in ("MKVTOOLNIX_PATH", "MKVTOOLNIX_DIR"):
+        configured_path = os.environ.get(variable_name)
+        if not configured_path:
+            continue
+        candidate = Path(configured_path).expanduser()
+        if candidate.is_dir():
+            candidate /= executable_name
+        if candidate.name.lower() == executable_name.lower():
+            return candidate
+    return None
+
+
+def get_program_candidates(program_name):
+    executable_name = program_name + (".exe" if sys.platform == "win32" else "")
+    candidates = []
+    custom_path = get_custom_program_path(program_name)
+    if custom_path:
+        candidates.append(custom_path)
+
+    system_path = which(program_name)
+    if system_path:
+        candidates.append(Path(system_path))
+
+    if sys.platform == "win32":
+        program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        candidates.append(program_files / "MKVToolNix" / executable_name)
+
+    candidates.append(Path(ToolsFolderPath) / executable_name)
+
+    unique_candidates = []
+    for candidate in candidates:
+        candidate = candidate.expanduser()
+        if candidate not in unique_candidates:
+            unique_candidates.append(candidate)
+    return unique_candidates
+
+
+def get_tool_environment(program_path):
+    environment = os.environ.copy()
+    portable_tool = Path(program_path).parent == Path(ToolsFolderPath)
+    if portable_tool and sys.platform != "win32" and Path(LibFolderPath).is_dir():
+        old_library_path = environment.get("LD_LIBRARY_PATH", "")
+        environment["LD_LIBRARY_PATH"] = (
+            f"{Path(LibFolderPath).absolute()}:{old_library_path}"
+        )
+    return environment
+
+
+def resolve_program(program_name):
+    for candidate in get_program_candidates(program_name):
+        version = get_program_version(
+            candidate,
+            program_name,
+            environment=get_tool_environment(candidate),
+        )
+        if version:
+            logging.info("Using %s: %s", program_name, candidate)
+            return str(candidate), version
+    logging.warning("Could not find a working %s executable", program_name)
+    return program_name, f"{program_name}: not found!"
+
+
+def get_missing_tools_error():
+    missing_tools = []
+    if "not found" in MKVMERGE_VERSION:
+        missing_tools.append("mkvmerge")
+    if "not found" in MKVPROPEDIT_VERSION:
+        missing_tools.append("mkvpropedit")
+    if not missing_tools:
+        return ""
+    return (
+        "MKVToolNix is required. Could not find: "
+        + ", ".join(missing_tools)
+        + ". Install MKVToolNix, add it to PATH, or set MKVTOOLNIX_PATH."
+    )
 
 
 def update_enviro_if_not_windows():
@@ -190,35 +266,9 @@ try:
     SettingJsonInfoFilePath = os.path.join(os.path.abspath(AppDataFolderPath), "setting.json")
     QueueSessionFilePath = os.path.join(os.path.abspath(AppDataFolderPath), "queue_session.json")
     TaskBarLibFilePath = os.path.join(os.path.abspath(DLLFolderPath), "TaskbarLib.tlb")
-    MKVPROPEDIT_PATH = os.path.join(os.path.abspath(ToolsFolderPath), "mkvpropedit")
-    MKVMERGE_PATH = os.path.join(os.path.abspath(ToolsFolderPath), "mkvmerge")
-    ENVIRONMENT = os.environ.copy()
-    update_enviro_if_not_windows()
-    MKVPROPEDIT_VERSION = get_mkvpropedit_version()
-    MKVMERGE_VERSION = get_mkvmerge_version()
-    if "mkvmerge" not in MKVMERGE_VERSION:
-        logging.warning("Could not use portable mkvmerge. Trying system version...")
-        MKVMERGE_PATH = "mkvmerge"
-        MKVMERGE_VERSION = get_mkvmerge_version()
-        if "mkvmerge" not in MKVMERGE_VERSION:
-            MKVMERGE_VERSION = "mkvmerge: not found!"
-            raise Exception("mkvmerge file! ")
-        else:
-            logging.info("mkvmerge OK")
-    else:
-        logging.info("mkvmerge OK")
-    if "mkvpropedit" not in MKVPROPEDIT_VERSION:
-        logging.warning("Could not use portable mkvpropedit. Trying system version...")
-        MKVPROPEDIT_PATH = "mkvpropedit"
-        MKVPROPEDIT_VERSION = get_mkvpropedit_version()
-        if "mkvpropedit" not in MKVPROPEDIT_VERSION:
-            MKVPROPEDIT_VERSION = "mkvpropedit: not found!"
-            raise Exception("mkvpropedit file! ")
-        else:
-            logging.info("mkvpropedit OK")
-    else:
-        logging.info("mkvpropedit OK")
+    MKVMERGE_PATH, MKVMERGE_VERSION = resolve_program("mkvmerge")
+    MKVPROPEDIT_PATH, MKVPROPEDIT_VERSION = resolve_program("mkvpropedit")
+    ENVIRONMENT = get_tool_environment(MKVMERGE_PATH)
 except Exception as e:
     logging.error(e)
-    missing_files_message = MissingFilesMessage(error_message=str(e))
-    missing_files_message.execute()
+    raise RuntimeError(f"Failed to initialize application resources: {e}") from e

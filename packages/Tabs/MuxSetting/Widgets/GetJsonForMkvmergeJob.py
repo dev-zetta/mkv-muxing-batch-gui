@@ -88,6 +88,7 @@ class GetJsonForMkvmergeJob:
         self.old_audio_append_command = ""
         self.old_subtitle_append_command = ""
         self.discard_old_attachments_command = ""
+        self.discard_old_chapters_command = ""
         self.change_default_forced_subtitle_track_setting_source_video_command = ""
         self.change_default_forced_audio_track_setting_source_video_command = ""
         self.specify_video_track_source_video_command = ""
@@ -196,8 +197,8 @@ class GetJsonForMkvmergeJob:
                 self.chapter_attach_command = add_json_line("--chapters") + \
                                               add_json_line(
                                                   check_for_system_backslash_path(self.job.chapter_name_absolute))
-            elif GlobalSetting.CHAPTER_DISCARD_OLD:
-                self.discard_old_attachments_command = add_json_line("--no-chapters")
+            if GlobalSetting.CHAPTER_DISCARD_OLD:
+                self.discard_old_chapters_command = add_json_line("--no-chapters")
 
     def setup_video_default_duration_fps_command(self):
         if GlobalSetting.VIDEO_DEFAULT_DURATION_FPS not in ["", "Default"]:
@@ -996,6 +997,7 @@ class GetJsonForMkvmergeJob:
         self.final_command += self.output_video_command
 
         self.final_command += self.discard_old_attachments_command
+        self.final_command += self.discard_old_chapters_command
         self.final_command += self.specify_video_track_source_video_command
         self.final_command += self.specify_subtitle_track_source_video_command
         self.final_command += self.specify_audio_track_source_video_command

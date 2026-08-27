@@ -24,6 +24,36 @@ def change_file_extension_to_mkv(file_name):
     return new_file_name_with_mkv_extension
 
 
+def change_file_extension_to_temporary_mkv(file_name):
+    file_extension_start_index = file_name.rfind(".")
+    return (
+        file_name[:file_extension_start_index]
+        + "#"
+        + GlobalSetting.RANDOM_OUTPUT_SUFFIX
+        + ".mkv "
+    )
+
+
+def get_mux_output_path(job):
+    if job.used_mkvpropedit:
+        return Path(job.video_name_absolute)
+    if GlobalSetting.OVERWRITE_SOURCE_FILES:
+        return Path(job.video_name_absolute).parent / change_file_extension_to_temporary_mkv(
+            job.video_name
+        )
+    return Path(GlobalSetting.DESTINATION_FOLDER_PATH) / change_file_extension_to_mkv(
+        job.video_name
+    )
+
+
+def mux_output_is_valid(job):
+    output_path = get_mux_output_path(job)
+    try:
+        return output_path.is_file() and output_path.stat().st_size > 0
+    except OSError:
+        return False
+
+
 def check_if_mkvpropedit_good():
     for i in range(len(GlobalSetting.SUBTITLE_FILES_LIST)):
         if len(GlobalSetting.SUBTITLE_FILES_LIST[i]) > 0:
@@ -53,6 +83,10 @@ def get_time():
 
 def add_double_quotation(string):
     return "\"" + str(string) + "\""
+
+
+def is_successful_mkvtoolnix_exit_code(exit_code):
+    return exit_code in (0, 1)
 
 
 class StartMuxingWorker(QObject):
@@ -198,12 +232,9 @@ class StartMuxingWorker(QObject):
 
     def check_if_crc_calculating_needed(self):
         if self.data[self.current_job].is_crc_calculating_required:
-            if self.data[self.current_job].used_mkvpropedit or GlobalSetting.OVERWRITE_SOURCE_FILES:
-                folder_path = os.path.dirname(self.data[self.current_job].video_name_absolute)
-            else:
-                folder_path = Path(GlobalSetting.DESTINATION_FOLDER_PATH)
-            output_file_name = os.path.join(folder_path, self.data[self.current_job].video_name)
-            self.start_crc_calculating_process_worker.file_name = output_file_name
+            self.start_crc_calculating_process_worker.file_name = str(
+                get_mux_output_path(self.data[self.current_job])
+            )
             self.start_crc_calculating_process_worker.progress = 0
             self.start_crc_calculating_process_worker.wait = False
             GlobalSetting.MUXING_ON = True
@@ -286,7 +317,19 @@ class StartMuxingWorker(QObject):
                 self.check_if_crc_calculating_needed()
 
     def finished_muxing_process(self, exit_code):
-        if exit_code == 2:
+        # MKVToolNix uses 0 for success, 1 for success with warnings and 2 for
+        # errors. Shell failures (for example a missing executable) commonly
+        # return 126/127 and must never be allowed into overwrite finalization.
+        successful_exit = is_successful_mkvtoolnix_exit_code(exit_code)
+        if successful_exit and not mux_output_is_valid(self.data[self.current_job]):
+            output_path = get_mux_output_path(self.data[self.current_job])
+            write_to_log_file(
+                f"MKVToolNix exited with code {exit_code}, but no non-empty output "
+                f"was created at: {output_path}"
+            )
+            successful_exit = False
+
+        if not successful_exit:
             self.data[self.current_job].error_occurred = True
             self.job_failed_signal.emit(self.current_job)
             if GlobalSetting.MUX_SETTING_ABORT_ON_ERRORS:

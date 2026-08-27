@@ -131,6 +131,7 @@ def check_if_mkvpropedit_wanted_to_be_used(window_parent):
         else:
             GlobalSetting.USE_MKVPROPEDIT = False
             return "Cancel"
+    GlobalSetting.USE_MKVPROPEDIT = False
     return "No"
 
 

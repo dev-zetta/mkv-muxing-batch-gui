@@ -37,7 +37,6 @@ class MuxingWorkerLifecycleTests(unittest.TestCase):
         controller_thread.started.connect(worker.run)
         worker.finished_all_jobs_signal.connect(lambda: completed.append(True))
         worker.finished_all_jobs_signal.connect(controller_thread.quit)
-        worker.finished_all_jobs_signal.connect(worker.deleteLater)
         controller_thread.finished.connect(self.app.quit)
 
         def fail_on_timeout():

@@ -202,6 +202,21 @@ def rename_file(file_name_old_crc_absolute_path, file_name_with_crc_absolute_pat
             time.sleep(0.05)
 
 
+def replace_source_with_mux_output(source_path, generated_path, target_path):
+    source_path = Path(source_path)
+    generated_path = Path(generated_path)
+    target_path = Path(target_path)
+    if not generated_path.is_file() or generated_path.stat().st_size == 0:
+        raise FileNotFoundError(f"Mux output is missing or empty: {generated_path}")
+
+    # Replacing an MKV source is one atomic operation. For a non-MKV source,
+    # publish the new MKV first and only then remove the old-format source, so
+    # a crash can leave duplicates but cannot leave the user with neither file.
+    os.replace(generated_path, target_path)
+    if os.path.abspath(source_path) != os.path.abspath(target_path):
+        source_path.unlink()
+
+
 class JobQueueTable(TableWidget):
     update_total_progress_signal = Signal(int)
     increase_number_of_done_jobs_signal = Signal()
@@ -739,12 +754,12 @@ class JobQueueTable(TableWidget):
         self.start_muxing_thread.started.connect(self.start_muxing_worker.run)
         self.start_muxing_worker.finished_paused_signal.connect(self.start_muxing_thread.quit)
         self.start_muxing_worker.finished_all_jobs_signal.connect(self.start_muxing_thread.quit)
-        self.start_muxing_worker.finished_all_jobs_signal.connect(self.start_muxing_worker.deleteLater)
         self.start_muxing_worker.finished_all_jobs_signal.connect(self.finished_all_jobs)
-        self.start_muxing_worker.finished_paused_signal.connect(self.start_muxing_worker.deleteLater)
         self.start_muxing_worker.finished_paused_signal.connect(self.paused_done)
         self.start_muxing_worker.cancel_signal.connect(self.start_muxing_thread.quit)
-        self.start_muxing_worker.cancel_signal.connect(self.start_muxing_worker.deleteLater)
+        # Keep Python ownership of the controller until the stopped thread is
+        # replaced. Scheduling deleteLater at the same moment as thread.quit
+        # can destroy the PySide wrapper twice during repeated queue runs.
         self.start_muxing_thread.finished.connect(self.start_muxing_thread.deleteLater)
         self.start_muxing_worker.mkvpropedit_good_signal.connect(self.show_confirm_using_mkvpropedit)
         self.start_muxing_worker.progress_signal.connect(self.update_progress)
@@ -837,7 +852,6 @@ class JobQueueTable(TableWidget):
 
     def delete_source_file_if_overwritten_enabled(self, job_index):
         if GlobalSetting.OVERWRITE_SOURCE_FILES and not self.data[job_index].used_mkvpropedit:
-            os.remove(self.data[job_index].video_name_absolute)
             folder_path = os.path.dirname(self.data[job_index].video_name_absolute)
             output_video_name = Path(change_file_extension_to_mkv_with_random_suffix(self.data[job_index].video_name))
             output_video_name_absolute = os.path.join(folder_path, output_video_name)
@@ -845,7 +859,11 @@ class JobQueueTable(TableWidget):
             output_file_name_folder_path_absolute = self.get_output_file_name_folder_path_absolute(job_index)
             original_file_name_absolute_path = os.path.join(output_file_name_folder_path_absolute,
                                                             original_output_video_name)
-            rename_file(output_video_name_absolute, original_file_name_absolute_path)
+            replace_source_with_mux_output(
+                self.data[job_index].video_name_absolute,
+                output_video_name_absolute,
+                original_file_name_absolute_path,
+            )
 
     def rename_output_file_if_needed(self, job_index):
         if self.data[job_index].is_crc_calculating_required:

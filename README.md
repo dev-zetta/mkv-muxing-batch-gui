@@ -149,10 +149,13 @@ Linux source usage is available, but the maintainers currently publish and verif
 
 ## Development
 
-Run the automated tests with the project environment:
+The pinned runtime and build dependencies are the current PyPI releases tested
+with Python 3.14. Run the automated tests with the project environment:
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+```bash
+MKV_MUXING_BATCH_GUI_DATA_DIR=/tmp/mkv-batch-gui-tests \
+QT_QPA_PLATFORM=offscreen \
+python -m unittest discover -s tests -v
 ```
 
 Build the Windows installer and portable archive after installing [Inno Setup 6](https://jrsoftware.org/isinfo.php):
@@ -164,11 +167,30 @@ Build the Windows installer and portable archive after installing [Inno Setup 6]
 
 Release artifacts and their checksums are written to the `release` directory.
 
+Build the Linux one-folder application with the same pinned environment:
+
+```bash
+python -m pip install -r requirements-build.txt
+python -m PyInstaller --noconfirm --clean packaging/linux/MkvMuxingBatch.spec
+```
+
+The Linux artifact is written to `dist/MKV Muxing Batch GUI`. It intentionally
+does not package the obsolete repository copy of MKVToolNix; install a current
+distribution package instead.
+
+Use `--smoke-test` to initialize the complete application and close it
+immediately, which is useful for validating a packaged artifact in CI.
+
+The complete original-upstream issue snapshot and severity triage are kept in
+[docs/UPSTREAM_ISSUES.md](docs/UPSTREAM_ISSUES.md).
+
 ### Updating MKVToolNix
 
 The Windows package includes `mkvmerge` and `mkvpropedit`. Advanced users can replace them inside the application’s `Resources\Tools\Windows64` directory. Keep both executables from the same MKVToolNix release and reinstall the application if an update causes incompatibilities.
 
-On Linux, clear the bundled tool directory only when you intentionally want the application to use the system MKVToolNix installation.
+Tool discovery checks `MKVTOOLNIX_PATH`/`MKVTOOLNIX_DIR`, the system `PATH`,
+the normal Windows installation directory, and finally a working bundled copy.
+On Linux, use the system MKVToolNix package.
 
 ## Roots and acknowledgements
 

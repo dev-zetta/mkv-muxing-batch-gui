@@ -96,9 +96,9 @@ jobs:
           if (-not $portableApp) {
               throw "Portable archive does not contain the application executable"
           }
-          & $portableApp.FullName --smoke-test
-          if ($LASTEXITCODE -ne 0) {
-              throw "Portable application smoke test failed with exit code $LASTEXITCODE"
+          $portableProcess = Start-Process -FilePath $portableApp.FullName -ArgumentList "--smoke-test" -Wait -PassThru
+          if ($portableProcess.ExitCode -ne 0) {
+              throw "Portable application smoke test failed with exit code $($portableProcess.ExitCode)"
           }
 
           $packagedTools = Get-ChildItem -LiteralPath $portableRoot -Filter "mkvmerge.exe" -Recurse
@@ -110,14 +110,14 @@ jobs:
               throw "Packaged mkvmerge did not report MKVToolNix 101.0"
           }
 
-          & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot"
-          if ($LASTEXITCODE -ne 0) {
-              throw "Silent installer validation failed with exit code $LASTEXITCODE"
+          $installerProcess = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$installRoot" -Wait -PassThru
+          if ($installerProcess.ExitCode -ne 0) {
+              throw "Silent installer validation failed with exit code $($installerProcess.ExitCode)"
           }
           $installedApp = Join-Path $installRoot "MKV Muxing Batch GUI.exe"
-          & $installedApp --smoke-test
-          if ($LASTEXITCODE -ne 0) {
-              throw "Installed application smoke test failed with exit code $LASTEXITCODE"
+          $installedProcess = Start-Process -FilePath $installedApp -ArgumentList "--smoke-test" -Wait -PassThru
+          if ($installedProcess.ExitCode -ne 0) {
+              throw "Installed application smoke test failed with exit code $($installedProcess.ExitCode)"
           }
 
       - name: Upload Windows release assets
@@ -152,10 +152,43 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes libxcb-cursor0
+          sudo apt-get install --yes \
+            libegl1 \
+            libfontconfig1 \
+            libgl1 \
+            libice6 \
+            libsm6 \
+            libx11-6 \
+            libx11-xcb1 \
+            libxcb-cursor0 \
+            libxcb-glx0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-render0 \
+            libxcb-shape0 \
+            libxcb-shm0 \
+            libxcb-sync1 \
+            libxcb-util1 \
+            libxcb-xfixes0 \
+            libxcb-xkb1 \
+            libxext6 \
+            libxkbcommon-x11-0 \
+            libxrender1
 
       - name: Install Python dependencies
         run: python -m pip install -r requirements-build.txt
+
+      - name: Validate Qt runtime
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: >-
+          python -c
+          "from PySide6.QtWidgets import QApplication;
+          app = QApplication([]);
+          print('Qt runtime:', app.platformName())"
 
       - name: Run tests
         env:

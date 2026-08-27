@@ -1,4 +1,5 @@
 import tempfile
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -190,8 +191,9 @@ class ToolDiscoveryTests(unittest.TestCase):
         ):
             candidates = GlobalFiles.get_program_candidates("mkvmerge")
         self.assertEqual(Path("/usr/bin/mkvmerge"), candidates[0])
+        executable_name = "mkvmerge.exe" if sys.platform == "win32" else "mkvmerge"
         self.assertEqual(
-            Path(GlobalFiles.ToolsFolderPath) / "mkvmerge",
+            Path(GlobalFiles.ToolsFolderPath) / executable_name,
             candidates[-1],
         )
 

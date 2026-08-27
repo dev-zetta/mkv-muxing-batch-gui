@@ -52,7 +52,7 @@ class StartupDependencyPromptTests(unittest.TestCase):
         dialog = MissingFilesMessage("mkvmerge and mkvpropedit are missing")
         button_texts = {button.text() for button in dialog.buttons()}
         self.assertEqual(
-            {"Download MKVToolNix", "Check Again", "Continue Without It"},
+            {"Download Latest MKVToolNix", "Check Again", "Continue Without It"},
             button_texts,
         )
 
@@ -69,24 +69,21 @@ class StartupDependencyPromptTests(unittest.TestCase):
 
         dialog.execute.assert_called_once_with()
 
-    def test_download_action_opens_the_official_mkvtoolnix_page(self):
+    def test_download_action_starts_the_in_app_installer(self):
         dialog = Mock()
         dialog.execute.return_value = "download"
+        toolbar = Mock()
+        window = Mock()
+        window.tabs.status_toolbar = toolbar
         with patch.object(
             main.GlobalFiles,
             "get_missing_tools_error",
             side_effect=["MKVToolNix is missing", "MKVToolNix is missing"],
-        ), patch.object(main, "MissingFilesMessage", return_value=dialog), patch.object(
-            main.QDesktopServices,
-            "openUrl",
-        ) as open_url:
-            main.window = None
+        ), patch.object(main, "MissingFilesMessage", return_value=dialog):
+            main.window = window
             main.show_missing_tools_prompt()
 
-        self.assertEqual(
-            main.MKVTOOLNIX_DOWNLOAD_URL,
-            open_url.call_args.args[0].toString(),
-        )
+        toolbar.install_latest.assert_called_once_with()
 
     def test_retry_runs_tool_discovery_and_closes_after_success(self):
         dialog = Mock()

@@ -24,6 +24,7 @@ from packages.Tabs.SettingTab.SettingButton import SettingButton
 from packages.Tabs.SubtitleTab.SubtitleTabManager import SubtitleTabManager
 from packages.Tabs.VideoTab.VideoSelection import VideoSelectionSetting
 from packages.Widgets.ThemeButton import ThemeButton
+from packages.Widgets.ApplicationStatusToolbar import ApplicationStatusToolbar
 
 
 def get_activate_and_disabled_color_according_to_current_theme():
@@ -158,8 +159,10 @@ class TabsManager(QWidget):
 
         self.page_stack = ResponsiveStackedWidget()
         self.page_stack.setObjectName("pageStack")
+        self.status_toolbar = ApplicationStatusToolbar(self)
         content_layout.addWidget(self.page_header)
         content_layout.addWidget(self.page_stack, 1)
+        content_layout.addWidget(self.status_toolbar)
 
         self.main_layout.addWidget(self.sidebar)
         self.main_layout.addWidget(self.content_area, 1)

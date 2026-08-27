@@ -89,6 +89,9 @@ elif sys.platform == "linux" or sys.platform == "linux2":
 else:
     ToolsFolderPath = os.path.join(os.path.abspath(GlobalToolsFolderPath), Path('Other Systems'))
 AppDataFolderPath = create_app_data_folder()
+ManagedToolsFolderPath = os.path.join(
+    os.path.abspath(AppDataFolderPath), Path("Tools"), Path("MKVToolNix")
+)
 MergeLogsFolderPath = os.path.join(os.path.abspath(AppDataFolderPath), Path('Logs'))
 MediaInfoFolderPath = os.path.join(os.path.abspath(AppDataFolderPath), Path('MediaInfo'))
 os.makedirs(MergeLogsFolderPath, exist_ok=True)
@@ -133,6 +136,8 @@ def get_program_candidates(program_name):
     if custom_path:
         candidates.append(custom_path)
 
+    candidates.append(Path(ManagedToolsFolderPath) / executable_name)
+
     system_path = which(program_name)
     if system_path:
         candidates.append(Path(system_path))
@@ -153,6 +158,37 @@ def get_program_candidates(program_name):
 
 def get_tool_environment(program_path):
     environment = os.environ.copy()
+    program_path = Path(program_path)
+    if sys.platform.startswith("linux"):
+        resolved_program = program_path.resolve()
+        if (
+            resolved_program.parent.name == "bin"
+            and resolved_program.parent.parent.name == "usr"
+            and "versions" in resolved_program.parts
+        ):
+            app_directory = resolved_program.parents[2]
+            library_directories = [
+                app_directory / "usr/lib",
+                app_directory / "usr/lib/x86_64-linux-gnu",
+                app_directory / "usr/lib64",
+                app_directory / "lib",
+                app_directory / "lib/x86_64-linux-gnu",
+                app_directory / "lib64",
+            ]
+            old_library_path = environment.get("LD_LIBRARY_PATH", "")
+            environment["LD_LIBRARY_PATH"] = os.pathsep.join(
+                [str(path) for path in library_directories]
+                + ([old_library_path] if old_library_path else [])
+            )
+            environment["PATH"] = os.pathsep.join(
+                [str(app_directory / "usr/bin"), environment.get("PATH", "")]
+            )
+            environment["XDG_DATA_DIRS"] = os.pathsep.join(
+                [
+                    str(app_directory / "usr/share"),
+                    environment.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share"),
+                ]
+            )
     portable_tool = Path(program_path).parent == Path(ToolsFolderPath)
     if portable_tool and sys.platform != "win32" and Path(LibFolderPath).is_dir():
         old_library_path = environment.get("LD_LIBRARY_PATH", "")
@@ -183,7 +219,8 @@ def get_missing_tools_error():
     return (
         "MKVToolNix is required. Could not find: "
         + ", ".join(missing_tools)
-        + ". Install MKVToolNix, add it to PATH, or set MKVTOOLNIX_PATH."
+        + ". Download the latest version here, install it system-wide, add it "
+          "to PATH, or set MKVTOOLNIX_PATH."
     )
 
 

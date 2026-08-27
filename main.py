@@ -8,13 +8,10 @@ import psutil
 from packages.Startup.MainApplication import MainApplication
 from packages.Startup import GlobalFiles
 from packages.Startup import GlobalIcons
-from packages.Startup.UpdateChecker import MKVTOOLNIX_DOWNLOAD_URL, UpdateChecker
-from packages.Startup.Version import Version
-from PySide6.QtCore import QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QFont, QFontDatabase
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QApplication
 from packages.Widgets.MissingFilesMessage import MissingFilesMessage
-from packages.Widgets.UpdateAvailableMessage import show_update_report
 from packages.Widgets.WarningDialog import WarningDialog
 
 if sys.platform == "win32":
@@ -58,6 +55,11 @@ def required_tools_available():
     return not GlobalFiles.get_missing_tools_error()
 
 
+def application_status_toolbar():
+    tabs = getattr(window, "tabs", None)
+    return getattr(tabs, "status_toolbar", None)
+
+
 def show_missing_tools_prompt():
     while not required_tools_available():
         action = MissingFilesMessage(
@@ -66,24 +68,23 @@ def show_missing_tools_prompt():
         ).execute()
         if action == "retry":
             GlobalFiles.refresh_tools()
+            toolbar = application_status_toolbar()
+            if toolbar:
+                toolbar.refresh_dependency_status()
             continue
         if action == "download":
-            QDesktopServices.openUrl(QUrl(MKVTOOLNIX_DOWNLOAD_URL))
+            toolbar = application_status_toolbar()
+            if toolbar:
+                toolbar.install_latest()
+            else:
+                logging.error("The dependency installer toolbar is unavailable")
         break
 
 
 def start_update_check():
-    # Keep the checker on the window so it remains alive until the asynchronous
-    # check has completed.
-    window.update_checker = UpdateChecker(parent=window)
-    window.update_checker.finished.connect(
-        lambda report: show_update_report(report, parent=window, always_show=False)
-    )
-    window.update_checker.check(
-        Version,
-        GlobalFiles.MKVMERGE_VERSION,
-        GlobalFiles.MKVPROPEDIT_VERSION,
-    )
+    toolbar = application_status_toolbar()
+    if toolbar:
+        toolbar.check_for_updates(always_show=False)
 
 
 def run_startup_checks():

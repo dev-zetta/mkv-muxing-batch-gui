@@ -107,7 +107,25 @@ class AboutDialog(MyDialog):
     def update_check_finished(self, report):
         self.check_for_updates_button.setEnabled(True)
         self.check_for_updates_button.setText("Check for Updates")
-        show_update_report(report, parent=self, always_show=True)
+        show_update_report(
+            report,
+            parent=self,
+            always_show=True,
+            update_handler=self.handle_update,
+        )
+
+    def handle_update(self, update):
+        widget = self.parentWidget()
+        while widget is not None:
+            toolbar = getattr(widget, "status_toolbar", None)
+            if toolbar is None:
+                toolbar = getattr(getattr(widget, "tabs", None), "status_toolbar", None)
+            if toolbar is not None and update.component == "MKVToolNix":
+                self.close()
+                toolbar.install_latest()
+                return
+            widget = widget.parentWidget()
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(update.download_url))
 
     def click_yes(self):
         self.close()
@@ -116,6 +134,8 @@ class AboutDialog(MyDialog):
         self.setWindowFlag(QtCore.Qt.WindowType.WindowContextHelpButtonHint, on=False)
 
     def showEvent(self, a0: QtGui.QShowEvent) -> None:
+        self.app_mkvmerge_current_version.setText(str(GlobalFiles.MKVMERGE_VERSION))
+        self.app_mkvpropedit_current_version.setText(str(GlobalFiles.MKVPROPEDIT_VERSION))
         super().showEvent(a0)
         self.setFixedSize(QSize(self.size().width() + 30, self.size().height()))
 

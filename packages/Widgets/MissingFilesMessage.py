@@ -9,7 +9,7 @@ class MissingFilesMessage(QMessageBox):
         self.setInformativeText(error_message)
         self.setWindowTitle("Missing Dependency")
         self.download_button = self.addButton(
-            "Download MKVToolNix",
+            "Download Latest MKVToolNix",
             QMessageBox.ButtonRole.ActionRole,
         )
         self.retry_button = self.addButton(

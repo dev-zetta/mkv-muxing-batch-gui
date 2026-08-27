@@ -72,7 +72,7 @@ class UpdateReportTests(unittest.TestCase):
     @staticmethod
     def fake_response(url):
         if url == UpdateChecker.APP_RELEASE_API_URL:
-            return app_release("2.8.0")
+            return app_release("2.8.1")
         if url == UpdateChecker.MKVTOOLNIX_RELEASE_API_URL:
             return mkvtoolnix_release("101.0")
         raise AssertionError(f"Unexpected URL: {url}")
@@ -106,7 +106,7 @@ class UpdateReportTests(unittest.TestCase):
             side_effect=self.fake_response,
         ):
             report = UpdateChecker.fetch_update_report(
-                "2.8.0",
+                "2.8.1",
                 "mkvmerge v101.0 ('Time To Turn') 64-bit",
                 "mkvpropedit v101.0 ('Time To Turn') 64-bit",
             )
@@ -121,13 +121,14 @@ class UpdateReportTests(unittest.TestCase):
             side_effect=self.fake_response,
         ):
             report = UpdateChecker.fetch_update_report(
-                "2.8.0",
+                "2.8.1",
                 "mkvmerge: not found!",
                 "mkvpropedit: not found!",
             )
 
         self.assertEqual((), report.updates)
-        self.assertEqual(("MKVToolNix (not installed)",), report.errors)
+        self.assertEqual((), report.errors)
+        self.assertEqual(("MKVToolNix",), report.missing)
 
     def test_network_failures_are_reported_without_raising(self):
         with patch.object(

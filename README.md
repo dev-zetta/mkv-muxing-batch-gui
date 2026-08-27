@@ -93,9 +93,10 @@ Linux distributions.
 [**Download the latest release →**](https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/latest)
 
 Choose the installer for a normal Windows installation or the portable ZIP
-when you want a self-contained Windows copy. The Linux archive requires the
-system MKVToolNix package. Published binary assets include a matching
-`SHA256SUMS.txt` file for integrity verification.
+when you want a self-contained Windows copy. The Linux archive can use an
+existing system MKVToolNix installation or download the latest publisher
+AppImage into the user's application-data directory. Published assets include
+a matching `SHA256SUMS.txt` file for integrity verification.
 
 ## Supported files
 
@@ -106,17 +107,22 @@ system MKVToolNix package. Published binary assets include a matching
 
 The application uses [MKVToolNix](https://mkvtoolnix.download/) for Matroska processing.
 
-If MKVToolNix is missing, the application still opens and offers to take you
-to the official download page. You can install it, choose **Check Again**, or
-continue browsing the application without muxing.
+If MKVToolNix is missing, the application still opens. Choose **Download Latest
+MKVToolNix** to fetch, verify, install, and validate the current publisher
+release without administrator privileges; choose **Check Again** after a manual
+installation; or continue browsing without muxing.
+
+The bottom status toolbar always shows whether MKVToolNix was found and its
+detected version. It also displays download progress, missing-tool information,
+available updates, and the main **Check for Updates** action.
 
 On startup, a background check compares the installed MKVToolNix version with
 the official release feed and the application version with this repository's
 latest stable GitHub release. Only available updates are announced; offline
-startup remains silent and fully usable. A manual **Check for Updates** action
-is available in **Options → About**. These runtime checks contact
-`mkvtoolnix.download` and `api.github.com` but never download or install
-anything automatically.
+startup remains silent and fully usable. Manual **Check for Updates** actions
+are available in the bottom toolbar and **Options → About**. Runtime checks
+contact `mkvtoolnix.download` and `api.github.com`; a dependency download starts
+only after the user selects an install/download action.
 
 ## Before muxing
 
@@ -135,9 +141,9 @@ A few advanced combinations deserve extra care:
 
 ### Windows
 
-The maintained configuration uses Python 3.14 and PySide6 6.11.2.
-Install MKVToolNix from its official download page before running from source;
-the app will open and offer that link if the tools are missing.
+The maintained configuration uses Python 3.14 and PySide6 6.11.2. MKVToolNix
+may be installed normally, or downloaded user-locally from the application's
+missing-dependency prompt or bottom toolbar.
 
 ```powershell
 git clone https://github.com/dev-zetta/mkv-muxing-batch-gui.git
@@ -149,7 +155,9 @@ py -3.14 -m venv .venv
 
 ### Linux
 
-Install MKVToolNix and the Qt runtime libraries required by your distribution first. On Ubuntu-based systems, these packages cover the common requirements:
+Install the Qt runtime libraries required by your distribution first. A system
+MKVToolNix package is optional because the application can download the current
+publisher AppImage. On Ubuntu-based systems, these packages cover the common requirements:
 
 ```bash
 sudo apt install mkvtoolnix libpugixml-dev libmatroska-dev libxcb-cursor0
@@ -164,8 +172,8 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-Linux releases are packaged as a one-folder archive and use the distribution's
-MKVToolNix tools. Install the packages above before starting the application.
+Linux releases are packaged as a one-folder archive. They use a working system
+MKVToolNix when available and otherwise offer the verified user-local download.
 
 ## Development
 
@@ -204,8 +212,8 @@ python -m PyInstaller --noconfirm --clean packaging/linux/MkvMuxingBatch.spec
 ```
 
 The Linux artifact is written to `dist/MKV Muxing Batch GUI`. It intentionally
-does not package the obsolete repository copy of MKVToolNix; install a current
-distribution package instead.
+does not package MKVToolNix in the source or application archive; users can
+install a distribution package or use the in-app publisher download.
 
 Use `--smoke-test` to initialize the complete application and close it
 immediately, which is useful for validating a packaged artifact in CI.
@@ -223,11 +231,14 @@ To update the packaged version, update the official archive URLs, version, and
 SHA-256 together in `packaging/dependencies.json`, then run the release build;
 it will reject disagreement with the publisher's checksum sidecar.
 
-Tool discovery checks `MKVTOOLNIX_PATH`/`MKVTOOLNIX_DIR`, the system `PATH`,
-the normal Windows installation directory, and finally a working bundled copy.
-On Linux, use the system MKVToolNix package. Advanced Windows users should
-prefer a normal MKVToolNix installation or one of the environment overrides
-instead of modifying a packaged application in place.
+Tool discovery checks `MKVTOOLNIX_PATH`/`MKVTOOLNIX_DIR`, the
+application-managed user-data directory, the system `PATH`, the normal Windows
+installation directory, and finally a working bundled copy. On Linux, the in-app installer
+downloads the official x86-64 AppImage, verifies its publisher zsync length and
+SHA-1 over HTTPS, extracts it once without FUSE, and records provenance. On
+Windows, runtime downloads use the official latest-version ZIP and publisher
+SHA-256 sidecar. Advanced users can still prefer a system installation or an
+environment override.
 
 ## Roots and acknowledgements
 

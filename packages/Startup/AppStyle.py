@@ -86,6 +86,41 @@ def get_dark_glass_stylesheet():
         padding: 3px 0;
     }
 
+    QFrame#applicationStatusBar {
+        background-color: rgba(23, 27, 33, 235);
+        border: 1px solid #353c47;
+        border-radius: 9px;
+    }
+
+    QLabel#dependencyStatusLabel, QLabel#updateStatusLabel {
+        color: #aeb4bf;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    QLabel#dependencyStatusLabel[statusLevel="ok"],
+    QLabel#updateStatusLabel[statusLevel="ok"] { color: #7fdb93; }
+    QLabel#dependencyStatusLabel[statusLevel="warning"],
+    QLabel#updateStatusLabel[statusLevel="warning"] { color: #f0bf6a; }
+    QLabel#dependencyStatusLabel[statusLevel="error"],
+    QLabel#updateStatusLabel[statusLevel="error"] { color: #f07c82; }
+    QLabel#dependencyStatusLabel[statusLevel="working"],
+    QLabel#updateStatusLabel[statusLevel="working"] { color: #78cbe0; }
+
+    QFrame#statusSeparator { color: #3c434e; }
+
+    QPushButton#statusActionButton {
+        min-height: 18px;
+        padding: 4px 10px;
+        font-size: 10px;
+    }
+
+    QProgressBar#dependencyProgress {
+        min-height: 13px;
+        max-height: 13px;
+        font-size: 9px;
+    }
+
     QGroupBox {
         background-color: rgba(23, 27, 33, 225);
         border: 1px solid #353c47;
@@ -356,18 +391,26 @@ def get_light_glass_stylesheet():
         background-color: #eef0f4;
         color: #20242b;
     }
-    QFrame#sidebar, QFrame#pageHeader, QGroupBox, QFrame#summaryCard {
+    QFrame#sidebar, QFrame#pageHeader, QGroupBox, QFrame#summaryCard,
+    QFrame#applicationStatusBar {
         background-color: rgba(255, 255, 255, 235);
         border: 1px solid #cfd4dc;
     }
     QFrame#sidebar { border-right: 1px solid #cbd0d8; }
-    QFrame#pageHeader, QGroupBox, QFrame#summaryCard { border-radius: 10px; }
+    QFrame#pageHeader, QGroupBox, QFrame#summaryCard,
+    QFrame#applicationStatusBar { border-radius: 10px; }
     QLabel#brandLabel, QLabel#pageTitle, QLabel#summaryValue { color: #20242b; font-weight: 700; }
     QLabel#brandLabel { font-size: 17px; }
     QLabel#pageTitle { font-size: 24px; }
     QLabel#summaryValue { font-size: 20px; }
     QLabel#brandCaption, QLabel#pageDescription, QLabel#summaryCaption { color: #707783; }
     QLabel#queueSavedLabel { color: #247a3b; font-weight: 600; }
+    QLabel#dependencyStatusLabel, QLabel#updateStatusLabel { color: #626b77; font-size: 10px; font-weight: 600; }
+    QLabel#dependencyStatusLabel[statusLevel="ok"], QLabel#updateStatusLabel[statusLevel="ok"] { color: #247a3b; }
+    QLabel#dependencyStatusLabel[statusLevel="warning"], QLabel#updateStatusLabel[statusLevel="warning"] { color: #9a6500; }
+    QLabel#dependencyStatusLabel[statusLevel="error"], QLabel#updateStatusLabel[statusLevel="error"] { color: #b33c45; }
+    QLabel#dependencyStatusLabel[statusLevel="working"], QLabel#updateStatusLabel[statusLevel="working"] { color: #15738a; }
+    QFrame#statusSeparator { color: #cbd0d8; }
     QListWidget#navigationList { background: transparent; border: none; outline: none; padding: 2px 8px; }
     QListWidget#navigationList::item { border-radius: 8px; min-height: 38px; padding: 4px 10px; color: #3e4652; }
     QListWidget#navigationList::item:hover { background-color: rgba(73, 55, 105, 20); }
@@ -377,6 +420,7 @@ def get_light_glass_stylesheet():
     QPushButton { background-color: #ffffff; color: #282d35; border: 1px solid #c3c9d2; border-radius: 7px; padding: 7px 12px; min-height: 22px; }
     QPushButton:hover { background-color: #f3eff9; border-color: #7654ae; }
     QPushButton#primaryActionButton { background-color: #65469b; border-color: #65469b; color: white; font-weight: 600; }
+    QPushButton#statusActionButton { min-height: 18px; padding: 4px 10px; font-size: 10px; }
     QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
         background-color: #ffffff; color: #252a32; border: 1px solid #bdc4ce; border-radius: 6px; padding: 6px 8px; min-height: 21px;
     }

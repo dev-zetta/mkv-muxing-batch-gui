@@ -15,11 +15,12 @@ class UpdateAvailableMessage(QMessageBox):
         ))
         self._download_buttons = {}
         for update in updates:
+            action = "Install" if update.component == "MKVToolNix" else "Open"
             button = self.addButton(
-                f"Open {update.component} Download",
+                f"{action} {update.component} Update",
                 QMessageBox.ButtonRole.ActionRole,
             )
-            self._download_buttons[button] = update.download_url
+            self._download_buttons[button] = update
         self.addButton(QMessageBox.StandardButton.Close)
         if errors:
             self.setDetailedText(
@@ -28,14 +29,19 @@ class UpdateAvailableMessage(QMessageBox):
 
     def execute(self):
         self.exec()
-        download_url = self._download_buttons.get(self.clickedButton())
-        if download_url:
-            QDesktopServices.openUrl(QUrl(download_url))
+        return self._download_buttons.get(self.clickedButton())
 
 
-def show_update_report(report, parent=None, always_show=False):
+def show_update_report(report, parent=None, always_show=False, update_handler=None):
     if report.updates:
-        UpdateAvailableMessage(report.updates, report.errors, parent=parent).execute()
+        selected_update = UpdateAvailableMessage(
+            report.updates, report.errors, parent=parent
+        ).execute()
+        if selected_update:
+            if update_handler:
+                update_handler(selected_update)
+            else:
+                QDesktopServices.openUrl(QUrl(selected_update.download_url))
         return
     if not always_show:
         return
@@ -48,6 +54,13 @@ def show_update_report(report, parent=None, always_show=False):
         message.setInformativeText(
             "Could not fully check: " + ", ".join(report.errors) + ".\n"
             "Install missing dependencies or check your internet connection, then try again."
+        )
+    elif report.missing:
+        message.setIcon(QMessageBox.Icon.Warning)
+        message.setWindowTitle("Dependency Missing")
+        message.setText("The application is current, but MKVToolNix is not installed.")
+        message.setInformativeText(
+            "Use Download latest MKVToolNix in the bottom toolbar to install it."
         )
     else:
         message.setIcon(QMessageBox.Icon.Information)

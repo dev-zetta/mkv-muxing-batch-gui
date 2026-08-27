@@ -5,6 +5,24 @@ All notable changes to this maintained fork are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-08-28
+
+### Added
+
+- Add a persistent main-window status toolbar showing the detected MKVToolNix
+  version, missing-tool details, download progress, dependency updates, and a
+  manual application/dependency update check.
+- Add a user-local MKVToolNix installer that resolves the publisher's latest
+  stable version, verifies its platform metadata, validates both downloaded
+  command-line tools, and activates them without administrator privileges.
+
+### Fixed
+
+- Make the missing-dependency prompt start a visible in-app download instead of
+  silently delegating to a browser that may not open.
+- Extract the Linux AppImage once and run its real command-line tools with the
+  included libraries, avoiding FUSE requirements and polluted version output.
+
 ## [2.8.0] - 2026-08-27
 
 ### Added
@@ -75,5 +93,6 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Add a complete snapshot and severity triage of all 121 issues from the
   original repository in `docs/UPSTREAM_ISSUES.md`.
 
+[2.8.1]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.1
 [2.8.0]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.0
 [2.7.2]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.7.2

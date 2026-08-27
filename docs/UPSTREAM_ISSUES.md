@@ -41,8 +41,9 @@ batch workflow becomes unusable. Feature requests are not labeled as bugs.
   jobs. Ineligible jobs now explicitly reset `USE_MKVPROPEDIT`.
 - **Major — #135 and #164:** Linux preferred an obsolete bundled MKVToolNix that
   no longer links on current distributions. Discovery now checks an explicit
-  override, PATH and platform install locations before any working portable
-  fallback. The Linux build deliberately requires a current system MKVToolNix.
+  override, the user-local managed tools, PATH, and platform install locations
+  before any working portable fallback. Linux users can use a current system
+  package or the verified in-app publisher download.
 - **Major — overwrite safety:** the old flow deleted the source before renaming
   the generated file. It now validates the generated output, atomically replaces
   an MKV source, and publishes a new-format MKV before removing a non-MKV source.

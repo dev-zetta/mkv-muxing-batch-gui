@@ -33,6 +33,7 @@ class AvailableUpdate:
 class UpdateReport:
     updates: tuple[AvailableUpdate, ...] = ()
     errors: tuple[str, ...] = ()
+    missing: tuple[str, ...] = ()
 
 
 def extract_version(value):
@@ -93,7 +94,7 @@ def _read_update_url(url):
     return payload
 
 
-def _installed_mkvtoolnix_version(mkvmerge_version, mkvpropedit_version):
+def installed_mkvtoolnix_version(mkvmerge_version, mkvpropedit_version):
     versions = [extract_version(mkvmerge_version), extract_version(mkvpropedit_version)]
     if not all(versions):
         return "", ""
@@ -108,6 +109,7 @@ def _installed_mkvtoolnix_version(mkvmerge_version, mkvpropedit_version):
 def fetch_update_report(app_version, mkvmerge_version, mkvpropedit_version):
     updates = []
     errors = []
+    missing = []
 
     try:
         latest_app_version = parse_app_release(_read_update_url(APP_RELEASE_API_URL))
@@ -126,14 +128,12 @@ def fetch_update_report(app_version, mkvmerge_version, mkvpropedit_version):
         latest_mkvtoolnix_version = parse_mkvtoolnix_release(
             _read_update_url(MKVTOOLNIX_RELEASE_API_URL)
         )
-        installed_version, display_version = _installed_mkvtoolnix_version(
+        installed_version, display_version = installed_mkvtoolnix_version(
             mkvmerge_version,
             mkvpropedit_version,
         )
-        # Missing tools have their own actionable startup prompt. Avoid showing
-        # a second, less useful "outdated" notification for the same problem.
         if not installed_version:
-            errors.append("MKVToolNix (not installed)")
+            missing.append("MKVToolNix")
         elif is_newer_version(latest_mkvtoolnix_version, installed_version):
             updates.append(AvailableUpdate(
                 component="MKVToolNix",
@@ -145,7 +145,11 @@ def fetch_update_report(app_version, mkvmerge_version, mkvpropedit_version):
         logging.info("MKVToolNix update check failed: %s", error)
         errors.append("MKVToolNix")
 
-    return UpdateReport(updates=tuple(updates), errors=tuple(errors))
+    return UpdateReport(
+        updates=tuple(updates),
+        errors=tuple(errors),
+        missing=tuple(missing),
+    )
 
 
 class UpdateChecker(QObject):

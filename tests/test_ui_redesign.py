@@ -3,13 +3,16 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
 from packages.Startup.AppStyle import get_dark_glass_stylesheet
+from packages.Startup import GlobalFiles
 from packages.Tabs.MuxSetting.MuxSetting import MuxSettingTab
+from packages.Widgets.ApplicationStatusToolbar import ApplicationStatusToolbar
 
 
 class UiRedesignTests(unittest.TestCase):
@@ -31,6 +34,8 @@ class UiRedesignTests(unittest.TestCase):
             "workspace=TabsManager(); "
             "assert workspace.page_stack.count() == 6; "
             "assert workspace.brand_label.text() == 'MKV Muxing Batch'; "
+            "assert 'MKVToolNix' in workspace.status_toolbar.dependency_status.text(); "
+            "assert workspace.status_toolbar.check_updates_button.text() == 'Check for Updates'; "
             "workspace.setCurrentIndex(5); MainApplication.processEvents(); "
             "assert workspace.currentIndex() == 5; "
             "assert workspace.page_title.text() == 'Mux Queue'; "
@@ -61,6 +66,32 @@ class UiRedesignTests(unittest.TestCase):
         finally:
             tab.deleteLater()
             self.app.processEvents()
+
+    def test_bottom_toolbar_shows_detected_dependency_version(self):
+        with patch.object(
+            GlobalFiles,
+            "MKVMERGE_VERSION",
+            "mkvmerge v101.0 ('Time To Turn') 64-bit",
+        ), patch.object(
+            GlobalFiles,
+            "MKVPROPEDIT_VERSION",
+            "mkvpropedit v101.0 ('Time To Turn') 64-bit",
+        ), patch.object(
+            GlobalFiles, "MKVMERGE_PATH", "/tools/mkvmerge"
+        ), patch.object(
+            GlobalFiles, "MKVPROPEDIT_PATH", "/tools/mkvpropedit"
+        ):
+            toolbar = ApplicationStatusToolbar()
+            try:
+                self.assertEqual(
+                    "●  MKVToolNix 101.0 · Ready",
+                    toolbar.dependency_status.text(),
+                )
+                self.assertTrue(toolbar.dependency_action.isHidden())
+                self.assertEqual("Check for Updates", toolbar.check_updates_button.text())
+            finally:
+                toolbar.deleteLater()
+                self.app.processEvents()
 
 
 if __name__ == "__main__":

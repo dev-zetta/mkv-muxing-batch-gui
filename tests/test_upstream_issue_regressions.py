@@ -184,14 +184,23 @@ class OverwriteSafetyTests(unittest.TestCase):
 
 
 class ToolDiscoveryTests(unittest.TestCase):
-    def test_system_tool_is_preferred_to_stale_portable_copy(self):
-        with patch(
+    def test_managed_and_system_tools_are_preferred_to_stale_portable_copy(self):
+        with patch.object(
+            GlobalFiles, "get_custom_program_path", return_value=None
+        ), patch(
             "packages.Startup.GlobalFiles.which",
             return_value="/usr/bin/mkvmerge",
         ):
             candidates = GlobalFiles.get_program_candidates("mkvmerge")
-        self.assertEqual(Path("/usr/bin/mkvmerge"), candidates[0])
         executable_name = "mkvmerge.exe" if sys.platform == "win32" else "mkvmerge"
+        self.assertEqual(
+            Path(GlobalFiles.ManagedToolsFolderPath) / executable_name,
+            candidates[0],
+        )
+        self.assertLess(
+            candidates.index(Path("/usr/bin/mkvmerge")),
+            candidates.index(Path(GlobalFiles.ToolsFolderPath) / executable_name),
+        )
         self.assertEqual(
             Path(GlobalFiles.ToolsFolderPath) / executable_name,
             candidates[-1],

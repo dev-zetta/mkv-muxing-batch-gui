@@ -66,6 +66,15 @@ An explicitly supplied offline archive can be staged with `--archive`; it still
 must match the pinned SHA-256. This mode exists for deterministic tests and
 air-gapped rebuilds where the artifact has already been obtained securely.
 
+Runtime acquisition remains outside the repository and release archives. After
+an explicit user action, the application reads the official latest-release feed
+and installs into the platform application-data directory. Windows downloads
+use the current publisher ZIP and SHA-256 sidecar. Linux downloads use the
+publisher's x86-64 AppImage and verify its exact length and SHA-1 from the
+official zsync metadata over HTTPS, extract it without FUSE, validate both CLI
+version reports, and record `PROVENANCE.json`. The repository remains
+documentation-only under `Resources/Tools`.
+
 ## Enforcement and history
 
 `tests/test_binary_policy.py` rejects executable/archive extensions and PE,

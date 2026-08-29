@@ -7,6 +7,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-08-29
+
 ### Added
 
 - Add an enabled-by-default output guard that verifies every completed remux
@@ -123,7 +125,8 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Add a complete snapshot and severity triage of all 121 issues from the
   original repository in `docs/UPSTREAM_ISSUES.md`.
 
-[Unreleased]: https://github.com/dev-zetta/mkv-muxing-batch-gui/compare/2.8.1...HEAD
+[Unreleased]: https://github.com/dev-zetta/mkv-muxing-batch-gui/compare/2.9.0...HEAD
+[2.9.0]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.9.0
 [2.8.1]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.1
 [2.8.0]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.8.0
 [2.7.2]: https://github.com/dev-zetta/mkv-muxing-batch-gui/releases/tag/2.7.2
